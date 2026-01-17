@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookingConfirmation } from '../types';
+import { BookingConfirmation, SiteConfig } from '../types';
 import { X, CheckCircle, Smartphone, Send } from 'lucide-react';
 import { ASSISTANCE_OPTIONS } from '../constants';
 
@@ -7,10 +7,10 @@ interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   confirmation: BookingConfirmation | null;
-  whatsappUrl: string;
+  siteConfig: SiteConfig;
 }
 
-const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmation, whatsappUrl }) => {
+const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmation, siteConfig }) => {
   if (!isOpen || !confirmation) return null;
 
   // Logic to show correct destination text
@@ -26,7 +26,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
 
   const assistanceText = assistanceLabels.length > 0 ? assistanceLabels.join(', ') : 'Ninguna';
 
-  // Construct the message with all details
+  // --- 1. WhatsApp Message Construction ---
+  const whatsappUrl = siteConfig.whatsappUrl;
   const rawMessage = 
     `🚕 *NUEVA RESERVA TAXI GALICIA*\n` +
     `🆔 *ID Reserva:* ${confirmation.id}\n` +
@@ -41,18 +42,15 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
     `--------------------------------\n` +
     `👋 _Hola, confirmo mi reserva._`;
 
-  // Encode for URL
   const encodedMessage = encodeURIComponent(rawMessage);
   
-  // CRITICAL: Ensure we use the provided link or fallback to the specific hardcoded one
+  // Ensure we use the provided link or fallback
   const targetUrl = (whatsappUrl && whatsappUrl.trim() !== '') 
     ? whatsappUrl 
     : "https://wa.me/message/IWHB27KLZRBFL1";
 
-  // Construct dynamic WhatsApp Link
-  // Check if url already has params (some short links like wa.me/message/XYZ might not, but api links might)
   const separator = targetUrl.includes('?') ? '&' : '?';
-  const finalLink = `${targetUrl}${separator}text=${encodedMessage}`;
+  const finalWhatsappLink = `${targetUrl}${separator}text=${encodedMessage}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(rawMessage);
@@ -60,10 +58,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-fade-in-up">
-      <div className="bg-zinc-900 border-2 border-yellow-500 rounded-2xl w-full max-w-md shadow-[0_0_50px_rgba(234,179,8,0.3)] overflow-hidden relative">
+      <div className="bg-zinc-900 border-2 border-yellow-500 rounded-2xl w-full max-w-md shadow-[0_0_50px_rgba(234,179,8,0.3)] overflow-hidden relative flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="bg-yellow-500 p-6 text-black text-center relative overflow-hidden">
+        <div className="bg-yellow-500 p-6 text-black text-center relative overflow-hidden shrink-0">
           <div className="absolute inset-0 bg-yellow-400 opacity-50 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/40 to-transparent"></div>
           
           <div className="relative z-10 flex flex-col items-center">
@@ -82,15 +80,15 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
           <X size={20} />
         </button>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
+        {/* Content (Scrollable) */}
+        <div className="p-6 space-y-6 overflow-y-auto">
           <div className="text-center">
             <p className="text-white text-lg font-bold">¡Casi hemos terminado!</p>
             <p className="text-zinc-400 text-sm mt-1">Envía los datos a nuestra central para confirmar el conductor.</p>
           </div>
 
           <div className="bg-black/50 p-4 rounded-xl border border-zinc-800 text-sm font-mono text-zinc-300 break-words shadow-inner">
-            <div className="flex justify-between items-start border-b border-zinc-800 pb-2 mb-2">
+             <div className="flex justify-between items-start border-b border-zinc-800 pb-2 mb-2">
                 <span className="text-yellow-500 font-bold">Origen</span>
                 <span className="text-right max-w-[60%]">{confirmation.data.origin}</span>
             </div>
@@ -104,18 +102,21 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <a 
-              href={finalLink}
-              target="_blank"
-              rel="noreferrer"
-              onClick={handleCopy}
-              className="group flex items-center justify-center gap-3 bg-green-600 hover:bg-green-500 text-white font-black py-4 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(22,163,74,0.4)] hover:shadow-[0_0_30px_rgba(22,163,74,0.6)] hover:-translate-y-1 active:scale-95"
-            >
-              <Smartphone size={24} className="group-hover:animate-bounce" />
-              <span className="text-lg uppercase tracking-wide">Enviar a Central</span>
-              <Send size={20} className="opacity-60" />
-            </a>
+          <div className="space-y-4">
+            {/* Primary Action: WhatsApp Only */}
+            <div className="flex flex-col gap-2">
+              <a 
+                href={finalWhatsappLink}
+                target="_blank"
+                rel="noreferrer"
+                onClick={handleCopy}
+                className="group flex items-center justify-center gap-3 bg-green-600 hover:bg-green-500 text-white font-black py-4 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(22,163,74,0.4)] hover:shadow-[0_0_30px_rgba(22,163,74,0.6)] hover:-translate-y-1 active:scale-95"
+              >
+                <Smartphone size={24} className="group-hover:animate-bounce" />
+                <span className="text-lg uppercase tracking-wide">Enviar a Central</span>
+                <Send size={20} className="opacity-60" />
+              </a>
+            </div>
             
             <p className="text-[10px] text-center text-zinc-600 max-w-xs mx-auto">
               Al pulsar, se abrirá WhatsApp con los datos de tu viaje ya escritos. Solo tienes que darle a enviar.

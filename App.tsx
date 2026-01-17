@@ -672,7 +672,7 @@ const App: React.FC = () => {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         confirmation={confirmation} 
-        whatsappUrl={config.whatsappUrl}
+        siteConfig={config}
       />
 
       {/* Admin Panel Modal */}

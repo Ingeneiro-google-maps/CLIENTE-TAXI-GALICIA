@@ -291,7 +291,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                   />
                 </div>
                  <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-400">Link WhatsApp</label>
+                  <label className="text-xs font-bold text-zinc-400">Link WhatsApp Principal</label>
                   <input 
                     type="text" 
                     name="whatsappUrl" 
