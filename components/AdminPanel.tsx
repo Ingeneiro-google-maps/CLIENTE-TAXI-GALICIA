@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -85,6 +85,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     if (confirm('¿Estás seguro de restablecer los valores originales?')) {
       setFormData(DEFAULT_CONFIG);
     }
+  };
+
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Limit size to avoid crashing DB or Browser (Limit 6MB for safety)
+    if (file.size > 6 * 1024 * 1024) {
+      alert("El archivo es demasiado grande (Máx 6MB). Para videos más largos o de alta calidad, por favor usa una URL externa para no ralentizar la web.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      setFormData(prev => ({ ...prev, videoUrl: result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearVideo = () => {
+      setFormData(prev => ({ ...prev, videoUrl: '' }));
   };
 
   // Fleet Management Functions
@@ -173,6 +195,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   };
 
   const statusUI = getStatusUI();
+
+  const isVideoFile = formData.videoUrl.startsWith('data:video');
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
@@ -313,7 +337,75 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                 />
               </div>
 
-              {/* VIDEO URL INPUT REMOVED */}
+               <div className="space-y-2">
+                <label className="text-xs font-bold text-zinc-400 flex items-center gap-2">
+                    <Video size={14} /> Video de Fondo (MP4)
+                </label>
+                
+                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-4">
+                   {/* 1. URL Option */}
+                   <div className="space-y-2">
+                       <label className="text-[10px] text-zinc-500 font-bold uppercase">Opción A: Pegar Enlace (Recomendado)</label>
+                       <div className="flex gap-2">
+                         <input 
+                           type="text" 
+                           name="videoUrl" 
+                           value={isVideoFile ? '(Archivo local cargado - Limpia para usar URL)' : formData.videoUrl} 
+                           onChange={handleChange}
+                           disabled={isVideoFile}
+                           placeholder="https://..."
+                           className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none font-mono text-xs disabled:opacity-50"
+                         />
+                         {isVideoFile && (
+                            <button 
+                              type="button" 
+                              onClick={clearVideo} 
+                              className="bg-red-900/30 text-red-400 px-3 py-2 rounded-lg hover:bg-red-900/50"
+                            >
+                                <Trash2 size={16} />
+                            </button>
+                         )}
+                       </div>
+                   </div>
+
+                   <div className="relative flex items-center py-2">
+                       <div className="flex-grow border-t border-zinc-800"></div>
+                       <span className="flex-shrink-0 mx-4 text-zinc-600 text-[10px] uppercase font-bold">O también</span>
+                       <div className="flex-grow border-t border-zinc-800"></div>
+                   </div>
+
+                   {/* 2. Upload Option */}
+                   <div>
+                       <label className="text-[10px] text-zinc-500 font-bold uppercase mb-2 block">Opción B: Subir Archivo (Guardar en DB)</label>
+                       <label className={`flex items-center justify-center gap-3 bg-zinc-900 border border-dashed ${isVideoFile ? 'border-green-500 bg-green-900/10' : 'border-zinc-700 hover:border-yellow-500 hover:bg-black'} p-6 rounded-lg cursor-pointer transition-all group`}>
+                            {isVideoFile ? (
+                                <>
+                                    <FileVideo size={24} className="text-green-500" />
+                                    <div className="text-center">
+                                        <p className="text-green-400 font-bold text-sm">¡Video Cargado!</p>
+                                        <p className="text-green-600/70 text-xs">Listo para guardar</p>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <Upload size={24} className="text-zinc-500 group-hover:text-yellow-400 transition-colors" />
+                                    <div className="text-center">
+                                        <p className="text-zinc-300 font-bold text-sm group-hover:text-white">Click para seleccionar video</p>
+                                        <p className="text-zinc-500 text-xs">Máx 6MB (Formatos MP4/WebM)</p>
+                                    </div>
+                                </>
+                            )}
+                            <input 
+                                type="file" 
+                                accept="video/mp4,video/webm" 
+                                onChange={handleVideoUpload}
+                                className="hidden"
+                            />
+                       </label>
+                   </div>
+                </div>
+              </div>
+
             </div>
 
             {/* 3. Fleet Section (Text) */}
