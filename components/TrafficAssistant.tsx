@@ -121,6 +121,22 @@ const TrafficAssistant: React.FC = () => {
     nextStartTimeRef.current = 0;
   };
 
+  const getApiKey = () => {
+    // Priority 1: process.env (Node/Standard)
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      return process.env.API_KEY;
+    }
+    // Priority 2: import.meta.env (Vite Standard)
+    try {
+      const meta = import.meta as any;
+      if (meta.env) {
+         return meta.env.VITE_API_KEY || meta.env.VITE_GOOGLE_API_KEY || meta.env.API_KEY;
+      }
+    } catch(e) {}
+    
+    return undefined;
+  };
+
   const startSession = async () => {
     setError(null);
     setStatusMessage('Iniciando sistemas...');
@@ -167,12 +183,12 @@ const TrafficAssistant: React.FC = () => {
       mediaStreamRef.current = stream;
 
       // 4. Initialize Gemini Client
-      // Check if API key is present
-      if (!process.env.API_KEY) {
-          throw new Error("Falta la API Key. Configura process.env.API_KEY.");
+      const apiKey = getApiKey();
+      if (!apiKey) {
+          throw new Error("API Key no encontrada. Verifica tu configuración (VITE_API_KEY o API_KEY).");
       }
 
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey });
       
       // 5. Connect to Live API
       const sessionPromise = ai.live.connect({
