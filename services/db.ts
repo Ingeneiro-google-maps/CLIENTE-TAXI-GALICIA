@@ -26,10 +26,36 @@ export const getDbUrl = () => {
   return '';
 };
 
-// We DO NOT initialize the client at the top level anymore to prevent crashes
-// if the URL is missing or empty.
-
 export const dbService = {
+  /**
+   * Tests the connection and initializes the table if needed.
+   */
+  testConnection: async (connectionString: string): Promise<{ success: boolean; message: string; stage: 'connecting' | 'creating' | 'ready' | 'error' }> => {
+    if (!connectionString || connectionString.trim() === '') {
+      return { success: false, message: 'URL no proporcionada', stage: 'error' };
+    }
+
+    const sql = neon(connectionString);
+    
+    try {
+      // 1. Test basic connectivity (Connecting phase)
+      await sql`SELECT 1`;
+    } catch (e: any) {
+      return { success: false, message: `No se pudo conectar: ${e.message}`, stage: 'error' };
+    }
+
+    try {
+      // 2. Ensure table exists (Creating phase)
+      // We check if table exists first to report status correctly if needed, 
+      // but simpler is just to run CREATE IF NOT EXISTS
+      await sql`CREATE TABLE IF NOT EXISTS app_settings (id INTEGER PRIMARY KEY, config JSONB)`;
+      
+      return { success: true, message: 'Conexión Establecida y Tablas Listas', stage: 'ready' };
+    } catch (e: any) {
+       return { success: false, message: `Error al crear tablas: ${e.message}`, stage: 'error' };
+    }
+  },
+
   /**
    * Fetches the site configuration from the database.
    * If no config exists or error occurs, returns the DEFAULT_CONFIG.
@@ -38,8 +64,6 @@ export const dbService = {
     try {
       const url = getDbUrl();
       
-      // CRITICAL FIX: If URL is missing/empty, return defaults immediately.
-      // Do not attempt to create a neon client with an empty string.
       if (!url || typeof url !== 'string' || url.trim() === '') {
         console.log('Database URL not configured, using local defaults.');
         return DEFAULT_CONFIG;
@@ -48,11 +72,14 @@ export const dbService = {
       const sql = neon(url);
       
       // We assume row ID 1 holds the active config
-      const response = await sql`SELECT config FROM app_settings WHERE id = 1`;
-      
-      if (response && response.length > 0 && response[0].config && Object.keys(response[0].config).length > 0) {
-        // Merge DB config with defaults to ensure new fields are present
-        return { ...DEFAULT_CONFIG, ...response[0].config };
+      // Wrap in try/catch specifically for the query in case table doesn't exist yet
+      try {
+        const response = await sql`SELECT config FROM app_settings WHERE id = 1`;
+        if (response && response.length > 0 && response[0].config && Object.keys(response[0].config).length > 0) {
+          return { ...DEFAULT_CONFIG, ...response[0].config };
+        }
+      } catch (e) {
+        console.log('Table might not exist yet, returning defaults');
       }
       
       return DEFAULT_CONFIG;
@@ -77,7 +104,10 @@ export const dbService = {
       const sql = neon(url);
       const configJson = JSON.stringify(newConfig);
       
-      // Upsert logic: Update ID 1, if not exists (unlikely due to setup), insert it.
+      // Ensure table exists before saving (just in case)
+      await sql`CREATE TABLE IF NOT EXISTS app_settings (id INTEGER PRIMARY KEY, config JSONB)`;
+
+      // Upsert logic
       await sql`
         INSERT INTO app_settings (id, config)
         VALUES (1, ${configJson}::jsonb)

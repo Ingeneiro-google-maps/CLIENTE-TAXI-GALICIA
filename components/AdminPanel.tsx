@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
+import { dbService } from '../services/db';
 
 interface AdminPanelProps {
   isOpen: boolean;
   onClose: () => void;
   currentConfig: SiteConfig;
-  onSave: (config: SiteConfig) => Promise<void>; // Updated to Promise
+  onSave: (config: SiteConfig) => Promise<void>;
 }
 
 const SECTION_LABELS: Record<string, string> = {
@@ -17,17 +18,25 @@ const SECTION_LABELS: Record<string, string> = {
   'reservation': 'Formulario de Reserva y Mapa',
 };
 
+type DbStatus = 'idle' | 'connecting' | 'creating' | 'ready' | 'error' | 'saving';
+
 const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig, onSave }) => {
   const [formData, setFormData] = useState<SiteConfig>(currentConfig);
   const [dbUrl, setDbUrl] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const [dbStatus, setDbStatus] = useState<DbStatus>('idle');
+  const [dbMessage, setDbMessage] = useState('');
+  const timeoutRef = useRef<any>(null);
 
   // Sync internal state if currentConfig changes
   useEffect(() => {
     setFormData(currentConfig);
+    
     // Load local DB URL
     const localUrl = localStorage.getItem('taxi_db_url');
-    if (localUrl) setDbUrl(localUrl);
+    if (localUrl) {
+      setDbUrl(localUrl);
+      testDbConnection(localUrl);
+    }
   }, [currentConfig]);
 
   if (!isOpen) return null;
@@ -38,7 +47,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   };
 
   const handleDbUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDbUrl(e.target.value);
+    const newVal = e.target.value;
+    setDbUrl(newVal);
+    
+    // Debounce connection test
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      testDbConnection(newVal);
+    }, 800);
+  };
+
+  const testDbConnection = async (url: string) => {
+    if (!url) {
+      setDbStatus('idle');
+      setDbMessage('');
+      return;
+    }
+
+    setDbStatus('connecting');
+    setDbMessage('Conectando con Neon...');
+
+    const result = await dbService.testConnection(url);
+    
+    if (result.success) {
+      setDbStatus('ready');
+      setDbMessage('Conexión Perfecta. Base de datos sincronizada.');
+    } else {
+      setDbStatus('error');
+      setDbMessage(result.message);
+    }
   };
 
   const handleReset = () => {
@@ -88,7 +125,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
+    setDbStatus('saving');
+    setDbMessage('Modificando y guardando datos...');
     
     // 1. Save DB URL Locally first
     if (dbUrl.trim()) {
@@ -97,18 +135,43 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
       localStorage.removeItem('taxi_db_url');
     }
 
-    // 2. Save Config to DB (uses the URL we just saved if applicable, via dbService logic)
+    // 2. Save Config to DB
     await onSave(formData);
     
-    setIsSaving(false);
-    onClose();
+    setDbStatus('ready');
+    setDbMessage('Guardado correctamente.');
     
-    // Force reload to apply DB connection if it changed
-    if (dbUrl !== localStorage.getItem('taxi_db_url_prev')) {
-        localStorage.setItem('taxi_db_url_prev', dbUrl);
-        window.location.reload();
+    // Short delay then close
+    setTimeout(() => {
+        onClose();
+        // Force reload to apply DB connection if it changed
+        const prevUrl = localStorage.getItem('taxi_db_url_prev');
+        if (dbUrl !== prevUrl) {
+            localStorage.setItem('taxi_db_url_prev', dbUrl);
+            window.location.reload();
+        }
+    }, 500);
+  };
+
+  // Helper for DB Status UI
+  const getStatusUI = () => {
+    switch(dbStatus) {
+      case 'idle':
+        return { color: 'text-zinc-500', bg: 'bg-zinc-800', icon: <Database size={16} />, text: 'Sin conexión configurada' };
+      case 'connecting':
+        return { color: 'text-yellow-400', bg: 'bg-yellow-900/20', icon: <Loader2 size={16} className="animate-spin" />, text: 'Conectando...' };
+      case 'creating':
+        return { color: 'text-blue-400', bg: 'bg-blue-900/20', icon: <Server size={16} className="animate-pulse" />, text: 'Creando tablas...' };
+      case 'ready':
+        return { color: 'text-green-400', bg: 'bg-green-900/20', icon: <CheckCircle size={16} />, text: 'Conexión Perfecta' };
+      case 'saving':
+        return { color: 'text-purple-400', bg: 'bg-purple-900/20', icon: <RefreshCw size={16} className="animate-spin" />, text: 'Modificando...' };
+      case 'error':
+        return { color: 'text-red-400', bg: 'bg-red-900/20', icon: <AlertTriangle size={16} />, text: 'Error de Conexión' };
     }
   };
+
+  const statusUI = getStatusUI();
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
@@ -135,25 +198,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
           <form id="admin-form" onSubmit={handleSubmit} className="space-y-12">
             
             {/* 0. DATABASE CONNECTION (CRITICAL) */}
-            <div className="bg-yellow-900/10 border border-yellow-500/30 p-4 rounded-xl space-y-3">
-               <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
-                 <Database size={16} /> Conexión Base de Datos (Neon)
-               </h3>
+            <div className={`border p-4 rounded-xl space-y-3 transition-colors ${dbStatus === 'error' ? 'border-red-500/50 bg-red-900/10' : dbStatus === 'ready' ? 'border-green-500/50 bg-green-900/5' : 'border-yellow-500/30 bg-yellow-900/5'}`}>
+               <div className="flex justify-between items-center">
+                  <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
+                    <Database size={16} /> Base de Datos (Neon)
+                  </h3>
+                  {/* Status Badge */}
+                  <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ${statusUI.bg} ${statusUI.color}`}>
+                     {statusUI.icon}
+                     <span>{statusUI.text}</span>
+                  </div>
+               </div>
+               
                <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-400">Cadena de Conexión (Connection String)</label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 relative">
                     <input 
                       type="password" 
                       value={dbUrl} 
                       onChange={handleDbUrlChange}
                       placeholder="postgres://usuario:password@ep-midb.neon.tech/neondb?sslmode=require"
-                      className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none font-mono text-xs"
+                      className={`w-full bg-black border rounded-lg p-3 text-white focus:outline-none font-mono text-xs pr-10 transition-colors ${dbStatus === 'error' ? 'border-red-500' : dbStatus === 'ready' ? 'border-green-500' : 'border-zinc-700 focus:border-yellow-500'}`}
                     />
+                    {dbStatus === 'connecting' && (
+                        <div className="absolute right-3 top-3">
+                            <Loader2 size={16} className="animate-spin text-yellow-500" />
+                        </div>
+                    )}
                   </div>
-                  <p className="text-[10px] text-zinc-500 flex items-center gap-1">
-                    <AlertTriangle size={10} className="text-yellow-500"/>
-                    <span>Importante: Debe empezar por <code>postgres://</code> o <code>postgresql://</code> y contener la contraseña.</span>
-                  </p>
+                  
+                  {/* Status Message Display */}
+                  <div className="flex justify-between items-start">
+                    <p className={`text-[10px] font-mono ${statusUI.color}`}>
+                        {dbMessage || 'Introduce la URL para conectar.'}
+                    </p>
+                    <p className="text-[10px] text-zinc-600 flex items-center gap-1">
+                        <AlertTriangle size={10} />
+                        <span>Debe empezar por <code>postgres://</code></span>
+                    </p>
+                  </div>
                </div>
             </div>
 
@@ -451,11 +534,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
           <button 
             type="submit" 
             form="admin-form"
-            disabled={isSaving}
-            className={`flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 px-8 rounded-xl shadow-lg transition-all transform hover:scale-105 ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={dbStatus === 'saving' || dbStatus === 'connecting'}
+            className={`flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 px-8 rounded-xl shadow-lg transition-all transform hover:scale-105 ${dbStatus === 'saving' ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-            {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+            {dbStatus === 'saving' ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+            {dbStatus === 'saving' ? 'Guardando...' : 'Guardar Cambios'}
           </button>
         </div>
 
