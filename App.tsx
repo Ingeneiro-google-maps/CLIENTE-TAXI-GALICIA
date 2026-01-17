@@ -4,13 +4,19 @@ import { BookingData, BookingConfirmation, SiteConfig } from './types';
 import GaliciaMap from './components/GaliciaMap';
 import BookingModal from './components/BookingModal';
 import AdminPanel from './components/AdminPanel';
-import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock } from 'lucide-react';
+import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock, Wifi, Activity, HeartPulse } from 'lucide-react';
 
 const App: React.FC = () => {
   // --- Configuration State ---
   const [config, setConfig] = useState<SiteConfig>(() => {
     const saved = localStorage.getItem('siteConfig');
-    return saved ? JSON.parse(saved) : DEFAULT_CONFIG;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Fallback for old configs that might not have fleetItems
+      if (!parsed.fleetItems) parsed.fleetItems = DEFAULT_CONFIG.fleetItems;
+      return parsed;
+    }
+    return DEFAULT_CONFIG;
   });
 
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -218,6 +224,89 @@ const App: React.FC = () => {
              </div>
           </div>
         </div>
+      </div>
+
+      {/* --- NEW SECTION: DETAILED TRANSFERS --- */}
+      <div className="bg-zinc-900 py-24 border-b border-zinc-800">
+         <div className="container mx-auto px-6">
+            <h2 className="text-3xl font-black text-center mb-12 uppercase text-white">
+              {config.transfersTitle}
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+               {/* Airport Detail */}
+               <div className="flex flex-col items-center text-center p-6 hover:bg-black/30 rounded-2xl transition-colors">
+                  <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mb-6 text-black">
+                     <Plane size={32} strokeWidth={2.5} />
+                  </div>
+                  <h3 className="text-xl font-bold mb-4 text-white">{config.transferAirportTitle}</h3>
+                  <p className="text-gray-400 leading-relaxed">{config.transferAirportDesc}</p>
+               </div>
+
+               {/* Health Detail */}
+               <div className="flex flex-col items-center text-center p-6 hover:bg-black/30 rounded-2xl transition-colors">
+                  <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mb-6 text-black">
+                     <HeartPulse size={32} strokeWidth={2.5} />
+                  </div>
+                  <h3 className="text-xl font-bold mb-4 text-white">{config.transferHealthTitle}</h3>
+                  <p className="text-gray-400 leading-relaxed">{config.transferHealthDesc}</p>
+               </div>
+
+               {/* Private Detail */}
+               <div className="flex flex-col items-center text-center p-6 hover:bg-black/30 rounded-2xl transition-colors">
+                  <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mb-6 text-black">
+                     <ShieldCheck size={32} strokeWidth={2.5} />
+                  </div>
+                  <h3 className="text-xl font-bold mb-4 text-white">{config.transferPrivateTitle}</h3>
+                  <p className="text-gray-400 leading-relaxed">{config.transferPrivateDesc}</p>
+               </div>
+            </div>
+         </div>
+      </div>
+
+      {/* --- NEW SECTION: FLEET --- */}
+      <div className="bg-black py-24 border-b border-zinc-800">
+         <div className="container mx-auto px-6">
+            <div className="text-center mb-16">
+                 <h2 className="text-4xl font-black mb-4 uppercase text-white">
+                   {config.fleetTitle}
+                 </h2>
+                 <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+                   {config.fleetDesc}
+                 </p>
+                 <div className="flex justify-center gap-6 mt-8 text-sm text-gray-400">
+                     <div className="flex items-center gap-2"><Wifi className="text-yellow-400" size={16} /> WiFi Gratis</div>
+                     <div className="flex items-center gap-2"><ShieldCheck className="text-yellow-400" size={16} /> Seguro Total</div>
+                     <div className="flex items-center gap-2"><Briefcase className="text-yellow-400" size={16} /> Maletero XL</div>
+                 </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+               {config.fleetItems && config.fleetItems.length > 0 ? (
+                 config.fleetItems.map((item) => (
+                    <div key={item.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-yellow-500/50 transition-all group">
+                       <div className="h-56 overflow-hidden relative">
+                         <img 
+                            src={item.imageUrl} 
+                            alt={item.title} 
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.pexels.com/photos/116675/pexels-photo-116675.jpeg?auto=compress&cs=tinysrgb&w=800'; // Fallback
+                            }}
+                         />
+                         <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 to-transparent opacity-60"></div>
+                       </div>
+                       <div className="p-8">
+                          <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+                          <p className="text-gray-400 text-sm leading-relaxed">{item.description}</p>
+                       </div>
+                    </div>
+                 ))
+               ) : (
+                 <p className="text-center w-full text-gray-500">No hay vehículos configurados.</p>
+               )}
+            </div>
+         </div>
       </div>
 
       {/* --- RESERVATION SECTION --- */}

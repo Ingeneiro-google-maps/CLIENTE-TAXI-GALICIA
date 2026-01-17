@@ -22,15 +22,35 @@ export interface BookingConfirmation {
   timestamp: Date;
 }
 
+export interface FleetItem {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+}
+
 export interface SiteConfig {
   heroTitle: string;
   heroSubtitle: string;
   videoUrl: string;
   whatsappUrl: string;
+  // Services Grid
   service1Title: string;
   service1Desc: string;
   service2Title: string;
   service2Desc: string;
   service3Title: string;
   service3Desc: string;
+  // New: Transfers Detail Section
+  transfersTitle: string;
+  transferAirportTitle: string;
+  transferAirportDesc: string;
+  transferHealthTitle: string;
+  transferHealthDesc: string;
+  transferPrivateTitle: string;
+  transferPrivateDesc: string;
+  // New: Fleet Section
+  fleetTitle: string;
+  fleetDesc: string;
+  fleetItems: FleetItem[];
 }

@@ -41,12 +41,47 @@ export const DEFAULT_CONFIG: SiteConfig = {
   heroSubtitle: "Tu taxi de confianza 24H. Especialistas en el Camino de Santiago, traslados a aeropuertos y servicios a mutuas.",
   videoUrl: "https://videos.pexels.com/video-files/854671/854671-hd_1920_1080_25fps.mp4",
   whatsappUrl: "https://wa.me/message/IWHB27KLZRBFL1",
+  
+  // Services Grid
   service1Title: "Camino de Santiago",
   service1Desc: "Servicio especializado para peregrinos. Transporte de mochilas etapa a etapa y traslados de fin de etapa.",
   service2Title: "Aeropuertos y Estaciones",
   service2Desc: "Conexiones directas con Lavacolla (Santiago), Peinador (Vigo) y Alvedro (Coruña). Puntualidad garantizada.",
   service3Title: "Servicio 24 Horas",
   service3Desc: "Disponibles día y noche. Servicios para bodas, eventos, mutuas, rehabilitación y paquetería urgente.",
+
+  // Fleet
+  fleetTitle: "Nuestra Flota",
+  fleetDesc: "Contamos con vehículos modernos, de alta gama y con todas las comodidades. Seguridad, higiene y confort garantizados en cada trayecto.",
+  fleetItems: [
+    {
+      id: '1',
+      title: 'Sedán Premium',
+      description: 'Mercedes-Benz Clase E o similar. Máximo confort para viajes largos y traslados ejecutivos.',
+      imageUrl: 'https://images.pexels.com/photos/170811/pexels-photo-170811.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'
+    },
+    {
+      id: '2',
+      title: 'Monovolumen 7 Plazas',
+      description: 'Ideal para grupos de peregrinos o familias con mucho equipaje. Espacio y comodidad.',
+      imageUrl: 'https://images.pexels.com/photos/116675/pexels-photo-116675.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'
+    },
+    {
+      id: '3',
+      title: 'Taxi Estándar',
+      description: 'Vehículo híbrido ecológico perfecto para trayectos urbanos y desplazamientos rápidos.',
+      imageUrl: 'https://images.pexels.com/photos/4606344/pexels-photo-4606344.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'
+    }
+  ],
+
+  // Transfers Detail Section
+  transfersTitle: "Algunos de los traslados que realizamos son...",
+  transferAirportTitle: "Traslado al aeropuerto",
+  transferAirportDesc: "¿Necesitar ir al aeropuerto desde Caldas de Reis? En ese caso, puedes contactar Con Taxi Vero Hermida. Estamos a tu disposición para llevarte o recogerte del aeropuerto con total puntualidad.",
+  transferHealthTitle: "Traslado a centros de salud",
+  transferHealthDesc: "Ante una situación imprevista, puedes confiar en nuestro servicio de taxi. Te llevamos hasta el hospital más cercano o hasta tu centro de salud habitual, para que el traslado no te suponga un problema.",
+  transferPrivateTitle: "Traslados privados",
+  transferPrivateDesc: "Para cualquier tipo de traslado en taxi en Caldas de Reis y alrededores, puedes contactar con Taxi Vero Hermida. Te proporcionamos un servicio como taxista completo, llevándote a cualquier destino.",
 };
 
 // Deprecated: These are now loaded from SiteConfig, but kept for fallback or legacy ref

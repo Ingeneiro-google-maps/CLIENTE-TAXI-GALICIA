@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { SiteConfig } from '../types';
-import { X, Save, RotateCcw, Lock } from 'lucide-react';
+import { SiteConfig, FleetItem } from '../types';
+import { X, Save, RotateCcw, Lock, Plus, Trash2 } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 
 interface AdminPanelProps {
@@ -29,6 +29,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     if (confirm('¿Estás seguro de restablecer los valores originales?')) {
       setFormData(DEFAULT_CONFIG);
     }
+  };
+
+  // Fleet Management Functions
+  const handleFleetChange = (index: number, field: keyof FleetItem, value: string) => {
+    const newItems = [...(formData.fleetItems || [])];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setFormData(prev => ({ ...prev, fleetItems: newItems }));
+  };
+
+  const addFleetItem = () => {
+    const newItem: FleetItem = {
+      id: Date.now().toString(),
+      title: 'Nuevo Vehículo',
+      description: 'Descripción del vehículo...',
+      imageUrl: 'https://images.pexels.com/photos/170811/pexels-photo-170811.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'
+    };
+    setFormData(prev => ({ 
+      ...prev, 
+      fleetItems: [...(prev.fleetItems || []), newItem] 
+    }));
+  };
+
+  const removeFleetItem = (index: number) => {
+    const newItems = [...(formData.fleetItems || [])];
+    newItems.splice(index, 1);
+    setFormData(prev => ({ ...prev, fleetItems: newItems }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -113,9 +139,201 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
               </div>
             </div>
 
-            {/* Services */}
+            {/* Fleet Section (Text) */}
             <div className="space-y-4">
-              <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider border-b border-zinc-800 pb-2">Servicios (Textos)</h3>
+               <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider border-b border-zinc-800 pb-2">Sección: Flota (Textos)</h3>
+               <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-400">Título Flota</label>
+                  <input 
+                    type="text" 
+                    name="fleetTitle" 
+                    value={formData.fleetTitle} 
+                    onChange={handleChange}
+                    className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-400">Descripción Flota</label>
+                  <textarea 
+                    name="fleetDesc" 
+                    value={formData.fleetDesc} 
+                    onChange={handleChange}
+                    rows={2}
+                    className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none resize-none"
+                  />
+                </div>
+            </div>
+
+            {/* Fleet Items (Dynamic List) */}
+            <div className="space-y-4">
+               <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+                 <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider">Gestión de Vehículos (Imágenes)</h3>
+                 <button 
+                    type="button" 
+                    onClick={addFleetItem}
+                    className="flex items-center gap-1 text-xs bg-yellow-500 text-black px-3 py-1 rounded font-bold hover:bg-yellow-400"
+                 >
+                    <Plus size={14} /> Añadir Vehículo
+                 </button>
+               </div>
+               
+               <div className="space-y-6">
+                 {formData.fleetItems && formData.fleetItems.map((item, index) => (
+                    <div key={item.id} className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 relative group">
+                        <button 
+                          type="button"
+                          onClick={() => removeFleetItem(index)}
+                          className="absolute top-2 right-2 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-red-900/30 rounded"
+                          title="Eliminar"
+                        >
+                           <Trash2 size={16} />
+                        </button>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           {/* Inputs */}
+                           <div className="space-y-3">
+                              <div className="space-y-1">
+                                <label className="text-xs font-bold text-zinc-500">Nombre del Vehículo</label>
+                                <input 
+                                  type="text"
+                                  value={item.title}
+                                  onChange={(e) => handleFleetChange(index, 'title', e.target.value)}
+                                  className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm focus:border-yellow-500 focus:outline-none"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-xs font-bold text-zinc-500">Descripción Corta</label>
+                                <textarea
+                                  value={item.description}
+                                  onChange={(e) => handleFleetChange(index, 'description', e.target.value)}
+                                  rows={2}
+                                  className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm focus:border-yellow-500 focus:outline-none resize-none"
+                                />
+                              </div>
+                               <div className="space-y-1">
+                                <label className="text-xs font-bold text-zinc-500">URL de la Imagen</label>
+                                <input 
+                                  type="text"
+                                  value={item.imageUrl}
+                                  onChange={(e) => handleFleetChange(index, 'imageUrl', e.target.value)}
+                                  placeholder="https://..."
+                                  className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs font-mono focus:border-yellow-500 focus:outline-none"
+                                />
+                              </div>
+                           </div>
+
+                           {/* Preview */}
+                           <div className="flex flex-col items-center justify-center">
+                              <div className="w-full h-32 rounded-lg overflow-hidden bg-black border border-zinc-800 mb-2">
+                                <img 
+                                  src={item.imageUrl} 
+                                  alt="Preview" 
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+                                />
+                              </div>
+                              <span className="text-xs text-zinc-500">Vista Previa</span>
+                           </div>
+                        </div>
+                    </div>
+                 ))}
+                 
+                 {(!formData.fleetItems || formData.fleetItems.length === 0) && (
+                   <p className="text-center text-zinc-600 italic">No hay vehículos. Añade uno para comenzar.</p>
+                 )}
+               </div>
+            </div>
+
+            {/* Transfers Detail Section */}
+             <div className="space-y-4">
+              <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider border-b border-zinc-800 pb-2">Sección: Tipos de Traslados</h3>
+               <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-400">Título Principal Sección</label>
+                  <input 
+                    type="text" 
+                    name="transfersTitle" 
+                    value={formData.transfersTitle} 
+                    onChange={handleChange}
+                    className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none"
+                  />
+                </div>
+              
+              {/* Transfer 1: Airport */}
+              <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 space-y-3">
+                 <div className="space-y-2">
+                    <label className="text-xs font-bold text-zinc-400">Traslado 1: Título (Aeropuerto)</label>
+                    <input 
+                      type="text" 
+                      name="transferAirportTitle" 
+                      value={formData.transferAirportTitle} 
+                      onChange={handleChange}
+                      className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-xs font-bold text-zinc-400">Traslado 1: Descripción</label>
+                    <textarea 
+                      name="transferAirportDesc" 
+                      value={formData.transferAirportDesc} 
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none resize-none"
+                    />
+                 </div>
+              </div>
+
+               {/* Transfer 2: Health */}
+              <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 space-y-3">
+                 <div className="space-y-2">
+                    <label className="text-xs font-bold text-zinc-400">Traslado 2: Título (Salud)</label>
+                    <input 
+                      type="text" 
+                      name="transferHealthTitle" 
+                      value={formData.transferHealthTitle} 
+                      onChange={handleChange}
+                      className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-xs font-bold text-zinc-400">Traslado 2: Descripción</label>
+                    <textarea 
+                      name="transferHealthDesc" 
+                      value={formData.transferHealthDesc} 
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none resize-none"
+                    />
+                 </div>
+              </div>
+
+               {/* Transfer 3: Private */}
+              <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 space-y-3">
+                 <div className="space-y-2">
+                    <label className="text-xs font-bold text-zinc-400">Traslado 3: Título (Privado)</label>
+                    <input 
+                      type="text" 
+                      name="transferPrivateTitle" 
+                      value={formData.transferPrivateTitle} 
+                      onChange={handleChange}
+                      className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-xs font-bold text-zinc-400">Traslado 3: Descripción</label>
+                    <textarea 
+                      name="transferPrivateDesc" 
+                      value={formData.transferPrivateDesc} 
+                      onChange={handleChange}
+                      rows={3}
+                      className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none resize-none"
+                    />
+                 </div>
+              </div>
+            </div>
+
+            {/* Services Grid (Old) */}
+            <div className="space-y-4">
+              <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider border-b border-zinc-800 pb-2">Servicios (Grid Superior)</h3>
               
               {/* Service 1 */}
               <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 space-y-3">
