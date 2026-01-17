@@ -1,5 +1,7 @@
 {
   "name": "Taxi Vero Caldas",
   "description": "Taxi oficial en Caldas de Reis. Servicio 24H, Camino de Santiago, Aeropuertos y Eventos.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }
