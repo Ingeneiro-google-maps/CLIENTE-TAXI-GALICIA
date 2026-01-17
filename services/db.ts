@@ -125,9 +125,15 @@ export const dbService = {
       `;
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving config to Neon:', error);
-      alert('Error al guardar en la base de datos Neon. Comprueba que la URL de conexión sea correcta.');
+      
+      let errMsg = error.message || String(error);
+      if (errMsg.includes('413') || errMsg.includes('too large') || errMsg.includes('payload')) {
+        alert('ERROR: El archivo es demasiado grande para guardar en la base de datos.\n\nPrueba a usar una URL de video en lugar de subir el archivo directamente.');
+      } else {
+        alert(`Error al guardar en la base de datos Neon:\n${errMsg}`);
+      }
       return false;
     }
   }

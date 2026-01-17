@@ -92,10 +92,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Warning for large files that might crash the DB call
-    // Neon JSONB rows have limits.
-    if (file.size > 10 * 1024 * 1024) { // 10MB warning
-       alert("ADVERTENCIA: Estás subiendo un video muy pesado. \n\nEs probable que falle al guardar en la base de datos (Error 413 o Timeout).\n\nPara videos de +10MB, por favor súbelos a una nube (AWS, Vimeo, YouTube) y usa la opción de URL.");
+    // LIMIT CHECK: 1.5MB max for DB storage to be safe with JSONB
+    const MAX_SIZE_MB = 1.5;
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) { 
+       alert(`ERROR: El video es demasiado grande (${(file.size / 1024 / 1024).toFixed(2)}MB).\n\nPara guardar en la base de datos, el límite es ${MAX_SIZE_MB}MB.\n\nSOLUCIÓN: Sube el video a YouTube, Vimeo o un hosting externo y copia la URL en el campo de texto.`);
+       return;
     }
 
     const reader = new FileReader();
@@ -105,7 +106,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     };
     
     reader.onerror = () => {
-        alert("Error al leer el archivo. Es posible que el navegador no tenga suficiente memoria.");
+        alert("Error al leer el archivo.");
     };
 
     reader.readAsDataURL(file);
@@ -157,9 +158,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setDbStatus('saving');
-    setDbMessage('Modificando y guardando datos...');
+    setDbMessage('Guardando configuración...');
     
-    // 1. Save DB URL Locally if different from default, or clear if empty
+    // 1. Save DB URL Locally
     if (dbUrl.trim()) {
       localStorage.setItem('taxi_db_url', dbUrl.trim());
     } else {
@@ -171,14 +172,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     
     if (success) {
         setDbStatus('ready');
-        setDbMessage('Guardado correctamente.');
+        setDbMessage('¡Guardado correctamente!');
         setTimeout(() => {
             onClose();
-            window.location.reload(); // Reload to reflect changes globally
-        }, 500);
+            window.location.reload(); 
+        }, 1000);
     } else {
         setDbStatus('error');
-        setDbMessage('Error al guardar. Archivo demasiado grande.');
+        setDbMessage('Error al guardar.');
     }
   };
 
@@ -194,7 +195,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
       case 'ready':
         return { color: 'text-green-400', bg: 'bg-green-900/20', icon: <CheckCircle size={16} />, text: 'Conexión Perfecta' };
       case 'saving':
-        return { color: 'text-purple-400', bg: 'bg-purple-900/20', icon: <RefreshCw size={16} className="animate-spin" />, text: 'Modificando...' };
+        return { color: 'text-purple-400', bg: 'bg-purple-900/20', icon: <RefreshCw size={16} className="animate-spin" />, text: 'Guardando...' };
       case 'error':
         return { color: 'text-red-400', bg: 'bg-red-900/20', icon: <AlertTriangle size={16} />, text: 'Error' };
     }
@@ -252,12 +253,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
             ) : (
                 <>
                     <Upload size={16} className="text-zinc-500 group-hover:text-yellow-400 transition-colors" />
-                    <span className="text-zinc-400 text-[10px] group-hover:text-white">Subir MP4/MOV</span>
+                    <span className="text-zinc-400 text-[10px] group-hover:text-white">Subir MP4 (Max 1.5MB)</span>
                 </>
             )}
             <input 
                 type="file" 
-                accept="video/mp4,video/webm,video/quicktime" 
+                accept="video/mp4,video/webm" 
                 onChange={(e) => handleVideoUpload(e, fieldName)}
                 className="hidden"
             />
