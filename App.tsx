@@ -4,27 +4,76 @@ import { BookingData, BookingConfirmation, SiteConfig } from './types';
 import GaliciaMap from './components/GaliciaMap';
 import BookingModal from './components/BookingModal';
 import AdminPanel from './components/AdminPanel';
-import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock, Wifi, Activity, HeartPulse } from 'lucide-react';
+import InstallPWA from './components/InstallPWA';
+import { dbService } from './services/db';
+import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock, Wifi, Activity, HeartPulse, Loader2 } from 'lucide-react';
 
 const App: React.FC = () => {
   // --- Configuration State ---
-  const [config, setConfig] = useState<SiteConfig>(() => {
-    const saved = localStorage.getItem('siteConfig');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Fallback for old configs
-      if (!parsed.fleetItems) parsed.fleetItems = DEFAULT_CONFIG.fleetItems;
-      if (!parsed.sectionOrder) parsed.sectionOrder = DEFAULT_CONFIG.sectionOrder;
-      return parsed;
-    }
-    return DEFAULT_CONFIG;
-  });
-
+  const [config, setConfig] = useState<SiteConfig>(DEFAULT_CONFIG);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
-  const handleSaveConfig = (newConfig: SiteConfig) => {
+  // Load Config from Neon Database on Mount
+  useEffect(() => {
+    let isMounted = true;
+    
+    const loadConfig = async () => {
+      try {
+        // Race condition: If DB takes more than 2 seconds, force load defaults so user sees the site
+        const timeoutPromise = new Promise<SiteConfig>((resolve) => {
+           setTimeout(() => resolve(DEFAULT_CONFIG), 2000);
+        });
+
+        const dbPromise = dbService.getConfig();
+
+        // Wait for whichever comes first: DB data or 2-second timeout
+        const resultConfig = await Promise.race([dbPromise, timeoutPromise]);
+        
+        if (isMounted) {
+          setConfig(resultConfig);
+          setIsLoadingConfig(false);
+        }
+      } catch (error) {
+        console.error("Critical load error:", error);
+        if (isMounted) {
+          setConfig(DEFAULT_CONFIG); // Fallback to ensure app renders
+          setIsLoadingConfig(false);
+        }
+      }
+    };
+
+    loadConfig();
+
+    return () => { isMounted = false; };
+  }, []);
+
+  // PWA Logic: Detect if installed/mobile and prioritize "Request Taxi"
+  useEffect(() => {
+    // Check if running in standalone mode (Installed PWA)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    
+    // Check if mobile width
+    const isMobile = window.innerWidth < 768;
+
+    if (!isLoadingConfig) {
+      if (isStandalone) {
+        // If installed, immediately go to reservation
+        setTimeout(() => {
+           const reservationSection = document.getElementById('reservation');
+           if (reservationSection) {
+             reservationSection.scrollIntoView({ behavior: 'smooth' });
+           }
+        }, 500); // Small delay to allow render
+      }
+    }
+  }, [isLoadingConfig]);
+
+  const handleSaveConfig = async (newConfig: SiteConfig) => {
+    // Optimistic update
     setConfig(newConfig);
-    localStorage.setItem('siteConfig', JSON.stringify(newConfig));
+    // Save to DB
+    await dbService.saveConfig(newConfig);
   };
 
   // --- Booking State ---
@@ -487,9 +536,21 @@ const App: React.FC = () => {
     'reservation': ReservationSection,
   };
 
+  if (isLoadingConfig) {
+    return (
+      <div className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center text-white">
+        <Loader2 className="animate-spin text-yellow-400 mb-4" size={48} />
+        <p className="text-zinc-400 animate-pulse">Conectando...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-neutral-900 text-white selection:bg-yellow-500 selection:text-black overflow-x-hidden">
       
+      {/* Install Prompt for Mobile/PWA */}
+      <InstallPWA />
+
       {/* --- HERO SECTION (Always Top) --- */}
       <div className="relative h-screen w-full flex items-center justify-center overflow-hidden">
         {/* Video Background */}

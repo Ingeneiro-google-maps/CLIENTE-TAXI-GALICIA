@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 
 interface AdminPanelProps {
   isOpen: boolean;
   onClose: () => void;
   currentConfig: SiteConfig;
-  onSave: (config: SiteConfig) => void;
+  onSave: (config: SiteConfig) => Promise<void>; // Updated to Promise
 }
 
 const SECTION_LABELS: Record<string, string> = {
@@ -19,10 +19,15 @@ const SECTION_LABELS: Record<string, string> = {
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig, onSave }) => {
   const [formData, setFormData] = useState<SiteConfig>(currentConfig);
+  const [dbUrl, setDbUrl] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Sync internal state if currentConfig changes
   useEffect(() => {
     setFormData(currentConfig);
+    // Load local DB URL
+    const localUrl = localStorage.getItem('taxi_db_url');
+    if (localUrl) setDbUrl(localUrl);
   }, [currentConfig]);
 
   if (!isOpen) return null;
@@ -30,6 +35,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDbUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDbUrl(e.target.value);
   };
 
   const handleReset = () => {
@@ -77,10 +86,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     setFormData(prev => ({ ...prev, sectionOrder: newOrder }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    setIsSaving(true);
+    
+    // 1. Save DB URL Locally first
+    if (dbUrl.trim()) {
+      localStorage.setItem('taxi_db_url', dbUrl.trim());
+    } else {
+      localStorage.removeItem('taxi_db_url');
+    }
+
+    // 2. Save Config to DB (uses the URL we just saved if applicable, via dbService logic)
+    await onSave(formData);
+    
+    setIsSaving(false);
     onClose();
+    
+    // Force reload to apply DB connection if it changed
+    if (dbUrl !== localStorage.getItem('taxi_db_url_prev')) {
+        localStorage.setItem('taxi_db_url_prev', dbUrl);
+        window.location.reload();
+    }
   };
 
   return (
@@ -107,7 +134,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
         <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
           <form id="admin-form" onSubmit={handleSubmit} className="space-y-12">
             
-            {/* 1. Section Ordering (High Priority) */}
+            {/* 0. DATABASE CONNECTION (CRITICAL) */}
+            <div className="bg-yellow-900/10 border border-yellow-500/30 p-4 rounded-xl space-y-3">
+               <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
+                 <Database size={16} /> Conexión Base de Datos (Neon)
+               </h3>
+               <div className="space-y-2">
+                  <label className="text-xs font-bold text-zinc-400">Cadena de Conexión (Connection String)</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="password" 
+                      value={dbUrl} 
+                      onChange={handleDbUrlChange}
+                      placeholder="postgres://usuario:password@ep-midb.neon.tech/neondb?sslmode=require"
+                      className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none font-mono text-xs"
+                    />
+                  </div>
+                  <p className="text-[10px] text-zinc-500 flex items-center gap-1">
+                    <AlertTriangle size={10} className="text-yellow-500"/>
+                    <span>Importante: Debe empezar por <code>postgres://</code> o <code>postgresql://</code> y contener la contraseña.</span>
+                  </p>
+               </div>
+            </div>
+
+            {/* 1. Section Ordering */}
             <div className="space-y-4">
               <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider border-b border-zinc-800 pb-2 flex items-center gap-2">
                 <Layout size={16} /> Orden de Secciones
@@ -385,83 +435,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
               </div>
             </div>
 
-            {/* 6. Services Grid (Old) */}
-            <div className="space-y-4">
-              <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider border-b border-zinc-800 pb-2">Servicios (Grid Superior)</h3>
-              
-              {/* Service 1 */}
-              <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 space-y-3">
-                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-400">Servicio 1: Título</label>
-                    <input 
-                      type="text" 
-                      name="service1Title" 
-                      value={formData.service1Title} 
-                      onChange={handleChange}
-                      className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none"
-                    />
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-400">Servicio 1: Descripción</label>
-                    <textarea 
-                      name="service1Desc" 
-                      value={formData.service1Desc} 
-                      onChange={handleChange}
-                      rows={2}
-                      className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none resize-none"
-                    />
-                 </div>
-              </div>
-
-              {/* Service 2 */}
-              <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 space-y-3">
-                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-400">Servicio 2: Título</label>
-                    <input 
-                      type="text" 
-                      name="service2Title" 
-                      value={formData.service2Title} 
-                      onChange={handleChange}
-                      className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none"
-                    />
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-400">Servicio 2: Descripción</label>
-                    <textarea 
-                      name="service2Desc" 
-                      value={formData.service2Desc} 
-                      onChange={handleChange}
-                      rows={2}
-                      className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none resize-none"
-                    />
-                 </div>
-              </div>
-
-              {/* Service 3 */}
-              <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 space-y-3">
-                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-400">Servicio 3: Título</label>
-                    <input 
-                      type="text" 
-                      name="service3Title" 
-                      value={formData.service3Title} 
-                      onChange={handleChange}
-                      className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none"
-                    />
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-400">Servicio 3: Descripción</label>
-                    <textarea 
-                      name="service3Desc" 
-                      value={formData.service3Desc} 
-                      onChange={handleChange}
-                      rows={2}
-                      className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none resize-none"
-                    />
-                 </div>
-              </div>
-            </div>
-
           </form>
         </div>
 
@@ -478,9 +451,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
           <button 
             type="submit" 
             form="admin-form"
-            className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 px-8 rounded-xl shadow-lg transition-all transform hover:scale-105"
+            disabled={isSaving}
+            className={`flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-3 px-8 rounded-xl shadow-lg transition-all transform hover:scale-105 ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <Save size={18} /> Guardar Cambios
+            {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+            {isSaving ? 'Guardando...' : 'Guardar Cambios'}
           </button>
         </div>
 

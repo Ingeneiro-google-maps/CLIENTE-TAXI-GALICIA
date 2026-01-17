@@ -1,0 +1,21 @@
+{
+  "name": "Taxi Vero Caldas",
+  "short_name": "Taxi Vero",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#F7C948",
+  "description": "Reserva tu taxi oficial en Caldas de Reis. Servicio 24H.",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/235/235861.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/235/235861.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
