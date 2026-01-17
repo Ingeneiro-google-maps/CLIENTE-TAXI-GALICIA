@@ -1,15 +1,15 @@
 import React from 'react';
 import { BookingConfirmation } from '../types';
-import { WHATSAPP_LINK } from '../constants';
 import { X, CheckCircle, Smartphone } from 'lucide-react';
 
 interface BookingModalProps {
   isOpen: boolean;
   onClose: () => void;
   confirmation: BookingConfirmation | null;
+  whatsappUrl: string;
 }
 
-const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmation }) => {
+const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmation, whatsappUrl }) => {
   if (!isOpen || !confirmation) return null;
 
   // Logic to show correct destination text
@@ -69,7 +69,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
 
           <div className="flex flex-col gap-3">
             <a 
-              href={WHATSAPP_LINK}
+              href={whatsappUrl}
               target="_blank"
               rel="noreferrer"
               onClick={handleCopy}

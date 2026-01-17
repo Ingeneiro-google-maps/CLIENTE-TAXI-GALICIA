@@ -21,3 +21,16 @@ export interface BookingConfirmation {
   data: BookingData;
   timestamp: Date;
 }
+
+export interface SiteConfig {
+  heroTitle: string;
+  heroSubtitle: string;
+  videoUrl: string;
+  whatsappUrl: string;
+  service1Title: string;
+  service1Desc: string;
+  service2Title: string;
+  service2Desc: string;
+  service3Title: string;
+  service3Desc: string;
+}

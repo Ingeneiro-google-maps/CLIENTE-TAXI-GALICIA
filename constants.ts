@@ -1,4 +1,4 @@
-import { City } from './types';
+import { City, SiteConfig } from './types';
 
 export const CITIES: City[] = [
   // HQ
@@ -36,6 +36,19 @@ export const ASSISTANCE_OPTIONS = [
   { id: 'events', label: 'Bodas/Eventos' },
 ];
 
-export const WHATSAPP_LINK = "https://wa.me/message/IWHB27KLZRBFL1";
-// Updated to Mexico City Traffic (Angel de la Independencia vibe)
-export const VIDEO_BG_URL = "https://videos.pexels.com/video-files/854671/854671-hd_1920_1080_25fps.mp4";
+export const DEFAULT_CONFIG: SiteConfig = {
+  heroTitle: "TAXI VERO CALDAS",
+  heroSubtitle: "Tu taxi de confianza 24H. Especialistas en el Camino de Santiago, traslados a aeropuertos y servicios a mutuas.",
+  videoUrl: "https://videos.pexels.com/video-files/854671/854671-hd_1920_1080_25fps.mp4",
+  whatsappUrl: "https://wa.me/message/IWHB27KLZRBFL1",
+  service1Title: "Camino de Santiago",
+  service1Desc: "Servicio especializado para peregrinos. Transporte de mochilas etapa a etapa y traslados de fin de etapa.",
+  service2Title: "Aeropuertos y Estaciones",
+  service2Desc: "Conexiones directas con Lavacolla (Santiago), Peinador (Vigo) y Alvedro (Coruña). Puntualidad garantizada.",
+  service3Title: "Servicio 24 Horas",
+  service3Desc: "Disponibles día y noche. Servicios para bodas, eventos, mutuas, rehabilitación y paquetería urgente.",
+};
+
+// Deprecated: These are now loaded from SiteConfig, but kept for fallback or legacy ref
+export const WHATSAPP_LINK = DEFAULT_CONFIG.whatsappUrl;
+export const VIDEO_BG_URL = DEFAULT_CONFIG.videoUrl;

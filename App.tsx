@@ -1,11 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { CITIES, ASSISTANCE_OPTIONS, VIDEO_BG_URL } from './constants';
-import { BookingData, BookingConfirmation } from './types';
+import { CITIES, ASSISTANCE_OPTIONS, DEFAULT_CONFIG } from './constants';
+import { BookingData, BookingConfirmation, SiteConfig } from './types';
 import GaliciaMap from './components/GaliciaMap';
 import BookingModal from './components/BookingModal';
-import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone } from 'lucide-react';
+import AdminPanel from './components/AdminPanel';
+import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock } from 'lucide-react';
 
 const App: React.FC = () => {
+  // --- Configuration State ---
+  const [config, setConfig] = useState<SiteConfig>(() => {
+    const saved = localStorage.getItem('siteConfig');
+    return saved ? JSON.parse(saved) : DEFAULT_CONFIG;
+  });
+
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+
+  const handleSaveConfig = (newConfig: SiteConfig) => {
+    setConfig(newConfig);
+    localStorage.setItem('siteConfig', JSON.stringify(newConfig));
+  };
+
+  // --- Booking State ---
   const [bookingData, setBookingData] = useState<BookingData>({
     origin: '',
     destination: '',
@@ -96,14 +111,16 @@ const App: React.FC = () => {
         {/* Video Background */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-black/60 z-10"></div>
+          {/* Key added to force reload when URL changes via admin panel */}
           <video 
+            key={config.videoUrl}
             autoPlay 
             loop 
             muted 
             playsInline 
             className="w-full h-full object-cover opacity-80"
           >
-            <source src={VIDEO_BG_URL} type="video/mp4" />
+            <source src={config.videoUrl} type="video/mp4" />
           </video>
         </div>
 
@@ -112,11 +129,11 @@ const App: React.FC = () => {
           <div className="inline-block mb-4 px-6 py-2 rounded-full border border-yellow-400 text-yellow-400 text-sm font-bold tracking-widest uppercase bg-black/60 backdrop-blur-md shadow-lg">
             Servicio Oficial Caldas de Reis
           </div>
-          <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter text-white drop-shadow-2xl">
-            TAXI <span className="text-yellow-400">VERO CALDAS</span>
+          <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter text-white drop-shadow-2xl uppercase">
+            {config.heroTitle}
           </h1>
           <p className="text-xl md:text-2xl text-gray-200 mb-10 max-w-3xl mx-auto font-light drop-shadow-md">
-            Tu taxi de confianza 24H. Especialistas en el <strong>Camino de Santiago</strong>, traslados a aeropuertos y servicios a mutuas.
+            {config.heroSubtitle}
           </p>
           <a href="#reservation" className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-4 px-10 rounded-full transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(250,204,21,0.5)] flex items-center gap-3 mx-auto w-fit">
             <Car size={24} />
@@ -124,33 +141,28 @@ const App: React.FC = () => {
           </a>
         </div>
 
-        {/* Animated Taxi SVG (Updated to Cartoon Style) */}
+        {/* Animated Taxi SVG (Cartoon Style) */}
         <div className="absolute bottom-10 left-0 w-full pointer-events-none z-20 overflow-hidden">
            <div className="animate-drive relative w-80 h-32">
              <svg viewBox="0 0 400 160" className="w-full h-full drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)]">
-                
                 {/* Wheels (Back) */}
                 <g className="animate-spin" style={{transformOrigin: '85px 125px', animationDuration: '1s'}}>
                   <circle cx="85" cy="125" r="23" fill="#1a1a1a" />
                   <circle cx="85" cy="125" r="14" fill="#d1d5db" stroke="#1a1a1a" strokeWidth="1"/>
                   <path d="M85 111 L85 139 M71 125 L99 125" stroke="#1a1a1a" strokeWidth="2" />
                 </g>
-                
                 {/* Wheels (Front) */}
                 <g className="animate-spin" style={{transformOrigin: '315px 125px', animationDuration: '1s'}}>
                   <circle cx="315" cy="125" r="23" fill="#1a1a1a" />
                   <circle cx="315" cy="125" r="14" fill="#d1d5db" stroke="#1a1a1a" strokeWidth="1"/>
                   <path d="M315 111 L315 139 M301 125 L329 125" stroke="#1a1a1a" strokeWidth="2" />
                 </g>
-
                 {/* Car Body Main */}
                 <path d="M15 100 Q15 70 50 60 L110 35 L250 35 L340 70 Q380 75 385 100 L385 115 Q385 125 365 125 L345 125 Q345 95 315 95 Q285 95 285 125 L115 125 Q115 95 85 95 Q55 95 55 125 L35 125 Q15 125 15 100 Z" 
                       fill="#F7C948" stroke="#DCA010" strokeWidth="2" />
-
                 {/* Windows */}
                 <path d="M120 40 L240 40 L330 70 L120 70 Z" fill="#222" />
                 <path d="M190 40 L190 70" stroke="#F7C948" strokeWidth="4" />
-                
                 {/* Taxi Sign */}
                 <g transform="translate(180, 15)">
                   <rect x="0" y="0" width="60" height="20" rx="3" fill="#F7C948" stroke="#111" strokeWidth="2" />
@@ -159,7 +171,6 @@ const App: React.FC = () => {
                   <rect x="31" y="4" width="8" height="6" fill="#111" />
                   <rect x="44" y="10" width="8" height="6" fill="#111" />
                 </g>
-
                 {/* Side Details */}
                 <rect x="120" y="80" width="160" height="15" fill="none" />
                 <rect x="120" y="80" width="10" height="10" fill="#111" />
@@ -168,12 +179,9 @@ const App: React.FC = () => {
                 <rect x="250" y="90" width="10" height="5" fill="#111" />
                 <rect x="260" y="80" width="10" height="10" fill="#111" />
                 <rect x="270" y="90" width="10" height="5" fill="#111" />
-
                 <text x="200" y="94" fontSize="22" fontWeight="900" fill="#111" textAnchor="middle" style={{fontFamily: 'Arial, sans-serif'}}>TAXI</text>
-
                 <rect x="200" y="75" width="15" height="4" rx="2" fill="#111" opacity="0.8" />
                 <rect x="260" y="75" width="15" height="4" rx="2" fill="#111" opacity="0.8" />
-                
                 {/* Lights */}
                 <path d="M380 95 L385 105 L370 105 Z" fill="#FFF" opacity="0.9" />
                 <path d="M15 90 L10 100 L20 100 Z" fill="#CC0000" />
@@ -182,31 +190,31 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* --- SERVICES GRID (Updated from legacy web) --- */}
+      {/* --- SERVICES GRID (Dynamic) --- */}
       <div className="bg-black py-20 border-b border-zinc-800">
         <div className="container mx-auto px-6">
           <h2 className="text-3xl font-black text-center mb-12 uppercase">Nuestros <span className="text-yellow-400">Servicios</span></h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
              
-             {/* Camino de Santiago */}
+             {/* Service 1 */}
              <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
                 <Backpack className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
-                <h3 className="text-xl font-bold mb-2">Camino de Santiago</h3>
-                <p className="text-gray-400">Servicio especializado para peregrinos. Transporte de mochilas etapa a etapa y traslados de fin de etapa.</p>
+                <h3 className="text-xl font-bold mb-2">{config.service1Title}</h3>
+                <p className="text-gray-400">{config.service1Desc}</p>
              </div>
 
-             {/* Airports */}
+             {/* Service 2 */}
              <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
                 <Plane className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
-                <h3 className="text-xl font-bold mb-2">Aeropuertos y Estaciones</h3>
-                <p className="text-gray-400">Conexiones directas con Lavacolla (Santiago), Peinador (Vigo) y Alvedro (Coruña). Puntualidad garantizada.</p>
+                <h3 className="text-xl font-bold mb-2">{config.service2Title}</h3>
+                <p className="text-gray-400">{config.service2Desc}</p>
              </div>
 
-             {/* Events / 24H */}
+             {/* Service 3 */}
              <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
                 <Clock className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
-                <h3 className="text-xl font-bold mb-2">Servicio 24 Horas</h3>
-                <p className="text-gray-400">Disponibles día y noche. Servicios para bodas, eventos, mutuas, rehabilitación y paquetería urgente.</p>
+                <h3 className="text-xl font-bold mb-2">{config.service3Title}</h3>
+                <p className="text-gray-400">{config.service3Desc}</p>
              </div>
           </div>
         </div>
@@ -228,7 +236,7 @@ const App: React.FC = () => {
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   
-                  {/* Contact Info (NEW) */}
+                  {/* Contact Info */}
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-2">
                       <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Nombre y Apellido</label>
@@ -413,8 +421,19 @@ const App: React.FC = () => {
              <span className="hover:text-yellow-400 transition-colors cursor-pointer">Vigo</span>
           </div>
           <p className="text-zinc-700 text-xs">© {new Date().getFullYear()} Taxi Vero Caldas. Todos los derechos reservados.</p>
-          <div className="mt-4 flex items-center justify-center gap-2 text-zinc-600 text-xs">
-            <Phone size={12} /> Atención preferente por WhatsApp
+          <div className="mt-4 flex flex-col items-center justify-center gap-4">
+            <div className="flex items-center gap-2 text-zinc-600 text-xs">
+               <Phone size={12} /> Atención preferente por WhatsApp
+            </div>
+            
+            {/* HIDDEN ADMIN PADLOCK */}
+            <button 
+              onClick={() => setIsAdminOpen(true)}
+              className="text-zinc-800 hover:text-yellow-400 transition-colors p-2"
+              aria-label="Admin Login"
+            >
+               <Lock size={14} />
+            </button>
           </div>
         </div>
       </footer>
@@ -424,6 +443,15 @@ const App: React.FC = () => {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
         confirmation={confirmation} 
+        whatsappUrl={config.whatsappUrl}
+      />
+
+      {/* Admin Panel Modal */}
+      <AdminPanel 
+        isOpen={isAdminOpen} 
+        onClose={() => setIsAdminOpen(false)} 
+        currentConfig={config}
+        onSave={handleSaveConfig}
       />
       
     </div>
