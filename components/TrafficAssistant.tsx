@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, MicOff, X, Activity, Radio, Volume2 } from 'lucide-react';
+import { Mic, MicOff, X, Activity, Radio, Volume2, AlertCircle } from 'lucide-react';
 
 // --- Audio Helpers (Encoding/Decoding) ---
 
@@ -127,7 +127,7 @@ const TrafficAssistant: React.FC = () => {
 
     // 1. Browser Capability Check
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-       setError('Tu navegador no soporta acceso al micrófono o la conexión no es segura.');
+       setError('Tu navegador no soporta acceso al micrófono o la conexión no es segura (HTTPS).');
        return;
     }
 
@@ -156,17 +156,22 @@ const TrafficAssistant: React.FC = () => {
       setStatusMessage('Conectando con satélite...');
 
       // 3. Get Microphone Access
+      // Note: Removed 'sampleRate: 16000' constraint as it causes OverconstrainedError on many mobile devices
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 16000
+          autoGainControl: true
         } 
       });
       mediaStreamRef.current = stream;
 
       // 4. Initialize Gemini Client
+      // Check if API key is present
+      if (!process.env.API_KEY) {
+          throw new Error("Falta la API Key. Configura process.env.API_KEY.");
+      }
+
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       // 5. Connect to Live API
@@ -272,7 +277,9 @@ const TrafficAssistant: React.FC = () => {
             if (err.toString().includes('permission') || err.toString().includes('denied')) {
                 setError('Permiso de micrófono denegado.');
             } else {
-                setError('Error de conexión con el satélite.');
+                // Try to extract more info from the error object
+                const msg = err instanceof Error ? err.message : String(err);
+                setError(`Error de satélite: ${msg}`);
             }
             cleanupAudio();
           }
@@ -281,12 +288,16 @@ const TrafficAssistant: React.FC = () => {
 
     } catch (err: any) {
       console.error('Initialization Error:', err);
+      // Detailed error handling for better debugging
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
           setError('Permiso denegado. Habilita el micrófono.');
       } else if (err.name === 'NotFoundError') {
           setError('No se encontró micrófono.');
+      } else if (err.name === 'OverconstrainedError') {
+          setError('Error de hardware: Micrófono no soporta la configuración.');
       } else {
-          setError('Error al iniciar audio. Refresca la página.');
+          // Show the actual error message
+          setError(err.message || 'No se pudo iniciar el sistema de audio.');
       }
       cleanupAudio();
     }
@@ -344,7 +355,11 @@ const TrafficAssistant: React.FC = () => {
             </div>
 
             {error ? (
-              <p className="text-red-400 text-xs text-center font-bold bg-red-900/20 p-2 rounded">{error}</p>
+              <div className="flex flex-col items-center justify-center p-2 bg-red-900/30 rounded-lg border border-red-500/50">
+                 <AlertCircle className="text-red-500 mb-2" size={24} />
+                 <p className="text-red-400 text-xs text-center font-bold">{error}</p>
+                 <button onClick={() => setError(null)} className="mt-2 text-[10px] text-zinc-400 underline">Reintentar</button>
+              </div>
             ) : (
               <>
                 <div className="relative">
