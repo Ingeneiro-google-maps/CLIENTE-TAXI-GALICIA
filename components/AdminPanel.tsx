@@ -92,10 +92,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Limit size to avoid crashing DB or Browser (Limit 6MB for safety)
-    if (file.size > 6 * 1024 * 1024) {
-      alert("El archivo es demasiado grande (Máx 6MB). Para videos más largos o de alta calidad, por favor usa una URL externa para no ralentizar la web.");
+    // Limit increased to 60GB as requested
+    // 60 GB * 1024 MB * 1024 KB * 1024 Bytes
+    const MAX_SIZE_BYTES = 60 * 1024 * 1024 * 1024; 
+
+    if (file.size > MAX_SIZE_BYTES) {
+      alert("El archivo supera el límite máximo del sistema (60 GB).");
       return;
+    }
+
+    // Warning for very large files regarding browser performance
+    if (file.size > 100 * 1024 * 1024) {
+       console.warn("Procesando archivo grande. Esto puede tomar unos momentos.");
     }
 
     const reader = new FileReader();
@@ -103,6 +111,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
       const result = event.target?.result as string;
       setFormData(prev => ({ ...prev, [fieldName]: result }));
     };
+    
+    // Use proper error handling for large files
+    reader.onerror = () => {
+        alert("Error al leer el archivo. Es posible que el navegador no tenga suficiente memoria para este video.");
+    };
+
     reader.readAsDataURL(file);
   };
 
@@ -247,7 +261,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
             ) : (
                 <>
                     <Upload size={16} className="text-zinc-500 group-hover:text-yellow-400 transition-colors" />
-                    <span className="text-zinc-400 text-[10px] group-hover:text-white">Subir MP4/MOV (Máx 6MB)</span>
+                    <span className="text-zinc-400 text-[10px] group-hover:text-white">Subir MP4/MOV (+50MB)</span>
                 </>
             )}
             <input 

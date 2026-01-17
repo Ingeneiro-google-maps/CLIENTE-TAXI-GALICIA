@@ -122,10 +122,10 @@ const TrafficAssistant: React.FC = () => {
     setError(null);
     setStatusMessage('Conectando con satélite...');
     
-    // Check for Secure Context (HTTPS) - Browser Requirement
-    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-        setError('El micrófono requiere conexión segura (HTTPS).');
-        return;
+    // IMPORTANT: Verify browser capabilities instead of manual string check
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+       setError('El navegador no soporta acceso al micrófono o la conexión no es segura.');
+       return;
     }
 
     try {
