@@ -2,10 +2,14 @@ import { neon } from '@neondatabase/serverless';
 import { SiteConfig } from '../types';
 import { DEFAULT_CONFIG } from '../constants';
 
+// URL proporcionada por el usuario
+const PROVIDED_DB_URL = "postgresql://neondb_owner:npg_6fHhjT9mnJPL@ep-withered-sun-ahefjqm9-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require";
+
 // Helper to safely get env var without crashing
 // PRIORITY: 
 // 1. LocalStorage (User entered in Admin Panel)
 // 2. Environment Variable (.env)
+// 3. Provided Default (Hardcoded)
 export const getDbUrl = () => {
   if (typeof window !== 'undefined') {
     const localUrl = localStorage.getItem('taxi_db_url');
@@ -17,13 +21,15 @@ export const getDbUrl = () => {
   try {
     // Check if import.meta.env exists (Vite)
     const meta = import.meta as any;
-    if (typeof meta !== 'undefined' && meta.env) {
+    if (typeof meta !== 'undefined' && meta.env && meta.env.VITE_DATABASE_URL) {
       return meta.env.VITE_DATABASE_URL;
     }
   } catch (e) {
     console.warn('Could not access environment variables');
   }
-  return '';
+  
+  // Return the user provided URL if nothing else is set
+  return PROVIDED_DB_URL;
 };
 
 export const dbService = {
@@ -50,9 +56,12 @@ export const dbService = {
       // but simpler is just to run CREATE IF NOT EXISTS
       await sql`CREATE TABLE IF NOT EXISTS app_settings (id INTEGER PRIMARY KEY, config JSONB)`;
       
-      return { success: true, message: 'Conexión Establecida y Tablas Listas', stage: 'ready' };
+      // Verify access by trying to read (even if empty)
+      await sql`SELECT id FROM app_settings LIMIT 1`;
+
+      return { success: true, message: 'Conexión Perfecta. Base de datos sincronizada.', stage: 'ready' };
     } catch (e: any) {
-       return { success: false, message: `Error al crear tablas: ${e.message}`, stage: 'error' };
+       return { success: false, message: `Error al verificar tablas: ${e.message}`, stage: 'error' };
     }
   },
 
@@ -79,7 +88,7 @@ export const dbService = {
           return { ...DEFAULT_CONFIG, ...response[0].config };
         }
       } catch (e) {
-        console.log('Table might not exist yet, returning defaults');
+        console.log('Table might not exist yet or empty, returning defaults');
       }
       
       return DEFAULT_CONFIG;

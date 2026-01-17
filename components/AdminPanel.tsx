@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem } from '../types';
 import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
-import { dbService } from '../services/db';
+import { dbService, getDbUrl } from '../services/db';
 
 interface AdminPanelProps {
   isOpen: boolean;
@@ -29,15 +29,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
 
   // Sync internal state if currentConfig changes
   useEffect(() => {
-    setFormData(currentConfig);
-    
-    // Load local DB URL
-    const localUrl = localStorage.getItem('taxi_db_url');
-    if (localUrl) {
-      setDbUrl(localUrl);
-      testDbConnection(localUrl);
+    if (isOpen) {
+        setFormData(currentConfig);
+        
+        // Load active DB URL (from LocalStorage or Default)
+        const activeUrl = getDbUrl();
+        setDbUrl(activeUrl);
+
+        if (activeUrl) {
+            testDbConnection(activeUrl);
+        }
     }
-  }, [currentConfig]);
+  }, [currentConfig, isOpen]);
 
   if (!isOpen) return null;
 
@@ -65,13 +68,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     }
 
     setDbStatus('connecting');
-    setDbMessage('Conectando con Neon...');
+    setDbMessage('Verificando conexión...');
 
     const result = await dbService.testConnection(url);
     
     if (result.success) {
       setDbStatus('ready');
-      setDbMessage('Conexión Perfecta. Base de datos sincronizada.');
+      setDbMessage(result.message);
     } else {
       setDbStatus('error');
       setDbMessage(result.message);
@@ -128,7 +131,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     setDbStatus('saving');
     setDbMessage('Modificando y guardando datos...');
     
-    // 1. Save DB URL Locally first
+    // 1. Save DB URL Locally if different from default, or clear if empty
     if (dbUrl.trim()) {
       localStorage.setItem('taxi_db_url', dbUrl.trim());
     } else {
@@ -136,38 +139,36 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     }
 
     // 2. Save Config to DB
-    await onSave(formData);
+    const success = await onSave(formData);
     
-    setDbStatus('ready');
-    setDbMessage('Guardado correctamente.');
-    
-    // Short delay then close
-    setTimeout(() => {
-        onClose();
-        // Force reload to apply DB connection if it changed
-        const prevUrl = localStorage.getItem('taxi_db_url_prev');
-        if (dbUrl !== prevUrl) {
-            localStorage.setItem('taxi_db_url_prev', dbUrl);
-            window.location.reload();
-        }
-    }, 500);
+    if (success) {
+        setDbStatus('ready');
+        setDbMessage('Guardado correctamente.');
+        setTimeout(() => {
+            onClose();
+            window.location.reload(); // Reload to reflect changes globally
+        }, 500);
+    } else {
+        setDbStatus('error');
+        setDbMessage('Error al guardar en la base de datos.');
+    }
   };
 
   // Helper for DB Status UI
   const getStatusUI = () => {
     switch(dbStatus) {
       case 'idle':
-        return { color: 'text-zinc-500', bg: 'bg-zinc-800', icon: <Database size={16} />, text: 'Sin conexión configurada' };
+        return { color: 'text-zinc-500', bg: 'bg-zinc-800', icon: <Database size={16} />, text: 'Desconectado' };
       case 'connecting':
         return { color: 'text-yellow-400', bg: 'bg-yellow-900/20', icon: <Loader2 size={16} className="animate-spin" />, text: 'Conectando...' };
       case 'creating':
-        return { color: 'text-blue-400', bg: 'bg-blue-900/20', icon: <Server size={16} className="animate-pulse" />, text: 'Creando tablas...' };
+        return { color: 'text-blue-400', bg: 'bg-blue-900/20', icon: <Server size={16} className="animate-pulse" />, text: 'Configurando Tablas...' };
       case 'ready':
         return { color: 'text-green-400', bg: 'bg-green-900/20', icon: <CheckCircle size={16} />, text: 'Conexión Perfecta' };
       case 'saving':
         return { color: 'text-purple-400', bg: 'bg-purple-900/20', icon: <RefreshCw size={16} className="animate-spin" />, text: 'Modificando...' };
       case 'error':
-        return { color: 'text-red-400', bg: 'bg-red-900/20', icon: <AlertTriangle size={16} />, text: 'Error de Conexión' };
+        return { color: 'text-red-400', bg: 'bg-red-900/20', icon: <AlertTriangle size={16} />, text: 'Error' };
     }
   };
 
@@ -217,7 +218,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                       type="password" 
                       value={dbUrl} 
                       onChange={handleDbUrlChange}
-                      placeholder="postgres://usuario:password@ep-midb.neon.tech/neondb?sslmode=require"
+                      placeholder="postgres://..."
                       className={`w-full bg-black border rounded-lg p-3 text-white focus:outline-none font-mono text-xs pr-10 transition-colors ${dbStatus === 'error' ? 'border-red-500' : dbStatus === 'ready' ? 'border-green-500' : 'border-zinc-700 focus:border-yellow-500'}`}
                     />
                     {dbStatus === 'connecting' && (
