@@ -1,32 +1,51 @@
-import React, { useState } from 'react';
-import { CITIES, ASSISTANCE_OPTIONS } from './constants';
+import React, { useState, useEffect } from 'react';
+import { CITIES, ASSISTANCE_OPTIONS, VIDEO_BG_URL } from './constants';
 import { BookingData, BookingConfirmation } from './types';
 import GaliciaMap from './components/GaliciaMap';
 import BookingModal from './components/BookingModal';
-import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star } from 'lucide-react';
+import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack } from 'lucide-react';
 
 const App: React.FC = () => {
   const [bookingData, setBookingData] = useState<BookingData>({
     origin: '',
     destination: '',
+    customAddress: '',
     assistance: [],
     notes: '',
   });
 
+  const [useCustomDest, setUseCustomDest] = useState(false);
   const [simulationActive, setSimulationActive] = useState(false);
   const [confirmation, setConfirmation] = useState<BookingConfirmation | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Set Caldas de Reis as default origin if available
+  useEffect(() => {
+    if (!bookingData.origin) {
+        setBookingData(prev => ({ ...prev, origin: 'caldas' }));
+    }
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setBookingData(prev => ({ ...prev, [name]: value }));
     
-    // Trigger simulation if both cities are selected
-    if ((name === 'origin' && bookingData.destination) || (name === 'destination' && bookingData.origin)) {
-       // Just a visual trigger delay
+    // Trigger simulation conditions
+    if (!useCustomDest && ((name === 'origin' && bookingData.destination) || (name === 'destination' && bookingData.origin))) {
        setSimulationActive(false);
        setTimeout(() => setSimulationActive(true), 100);
     }
+  };
+
+  const toggleCustomDest = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isCustom = e.target.checked;
+    setUseCustomDest(isCustom);
+    setBookingData(prev => ({
+      ...prev,
+      destination: isCustom ? 'custom' : '',
+      customAddress: ''
+    }));
+    setSimulationActive(false);
   };
 
   const handleAssistanceToggle = (id: string) => {
@@ -43,18 +62,21 @@ const App: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bookingData.origin || !bookingData.destination) return;
+    if (!bookingData.origin) return;
+    if (!useCustomDest && !bookingData.destination) return;
+    if (useCustomDest && !bookingData.customAddress) return;
 
-    // Simulate Simulating Route for a second before confirming
     setSimulationActive(true);
     
-    const randomId = 'TAX-' + Math.floor(10000 + Math.random() * 90000);
+    const randomId = 'VERO-' + Math.floor(10000 + Math.random() * 90000);
     const newConfirmation: BookingConfirmation = {
       id: randomId,
       data: { 
         ...bookingData,
         origin: CITIES.find(c => c.id === bookingData.origin)?.name || bookingData.origin,
-        destination: CITIES.find(c => c.id === bookingData.destination)?.name || bookingData.destination,
+        destination: useCustomDest 
+          ? 'custom' 
+          : (CITIES.find(c => c.id === bookingData.destination)?.name || bookingData.destination),
       },
       timestamp: new Date()
     };
@@ -68,76 +90,122 @@ const App: React.FC = () => {
       
       {/* --- HERO SECTION --- */}
       <div className="relative h-screen w-full flex items-center justify-center overflow-hidden">
-        {/* Replaced Video Background */}
+        {/* Video Background */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-black/60 z-10"></div>
-          <img 
-            src="https://images.unsplash.com/photo-1549557088-7e38466136be?q=80&w=2574&auto=format&fit=crop" 
-            alt="Taxi Background"
-            className="w-full h-full object-cover"
-          />
-          {/* Note: Video tags are heavy, using high quality image for instant reliability in generated code, 
-              but here is the markup for video if user wants to swap src:
-          <video autoPlay loop muted playsInline className="w-full h-full object-cover opacity-50">
-            <source src="URL_TO_VIDEO.mp4" type="video/mp4" />
-          </video> 
-          */}
+          <video 
+            autoPlay 
+            loop 
+            muted 
+            playsInline 
+            className="w-full h-full object-cover opacity-80"
+          >
+            <source src={VIDEO_BG_URL} type="video/mp4" />
+          </video>
         </div>
 
         {/* Hero Content */}
         <div className="relative z-20 container mx-auto px-6 text-center">
-          <div className="inline-block mb-4 px-4 py-1 rounded-full border border-yellow-400 text-yellow-400 text-sm font-bold tracking-widest uppercase">
-            Servicio Premium Galicia
+          <div className="inline-block mb-4 px-6 py-2 rounded-full border border-yellow-400 text-yellow-400 text-sm font-bold tracking-widest uppercase bg-black/60 backdrop-blur-md shadow-lg">
+            Servicio Oficial Caldas de Reis
           </div>
-          <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter text-white">
-            TU VIAJE, <span className="text-yellow-400">NUESTRA META</span>
+          <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter text-white drop-shadow-2xl">
+            TAXI <span className="text-yellow-400">VERO CALDAS</span>
           </h1>
-          <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-2xl mx-auto font-light">
-            Reserva tu taxi profesional en segundos. Cobertura total en Galicia con seguimiento en tiempo real.
+          <p className="text-xl md:text-2xl text-gray-200 mb-10 max-w-3xl mx-auto font-light drop-shadow-md">
+            Tu taxi de confianza 24H. Especialistas en el <strong>Camino de Santiago</strong>, traslados a aeropuertos y servicios a mutuas.
           </p>
           <a href="#reservation" className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-4 px-10 rounded-full transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(250,204,21,0.5)] flex items-center gap-3 mx-auto w-fit">
             <Car size={24} />
-            RESERVAR AHORA
+            SOLICITAR TAXI
           </a>
         </div>
 
-        {/* Animated Taxi */}
-        <div className="absolute bottom-20 left-0 w-full pointer-events-none z-10 overflow-hidden">
-           <div className="animate-drive flex items-center gap-2">
-             <div className="w-16 h-8 bg-yellow-400 rounded-t-lg relative shadow-[0_0_15px_rgba(250,204,21,0.6)]">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-2 w-8 h-2 bg-black rounded-t-sm text-[8px] text-white flex items-center justify-center font-bold">TAXI</div>
-                <div className="flex justify-between px-2 mt-1">
-                   <div className="w-4 h-3 bg-black/80 rounded-sm"></div>
-                   <div className="w-4 h-3 bg-black/80 rounded-sm"></div>
-                </div>
-                <div className="absolute bottom-0 w-full flex justify-between px-1">
-                  <div className="w-3 h-3 bg-black rounded-full -mb-1.5 animate-spin"></div>
-                  <div className="w-3 h-3 bg-black rounded-full -mb-1.5 animate-spin"></div>
-                </div>
-             </div>
-             <div className="h-0.5 w-24 bg-gradient-to-r from-yellow-400/0 to-yellow-400"></div>
+        {/* Animated Taxi SVG (Updated to Cartoon Style) */}
+        <div className="absolute bottom-10 left-0 w-full pointer-events-none z-20 overflow-hidden">
+           <div className="animate-drive relative w-80 h-32">
+             <svg viewBox="0 0 400 160" className="w-full h-full drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)]">
+                
+                {/* Wheels (Back) */}
+                <g className="animate-spin" style={{transformOrigin: '85px 125px', animationDuration: '1s'}}>
+                  <circle cx="85" cy="125" r="23" fill="#1a1a1a" />
+                  <circle cx="85" cy="125" r="14" fill="#d1d5db" stroke="#1a1a1a" strokeWidth="1"/>
+                  <path d="M85 111 L85 139 M71 125 L99 125" stroke="#1a1a1a" strokeWidth="2" />
+                </g>
+                
+                {/* Wheels (Front) */}
+                <g className="animate-spin" style={{transformOrigin: '315px 125px', animationDuration: '1s'}}>
+                  <circle cx="315" cy="125" r="23" fill="#1a1a1a" />
+                  <circle cx="315" cy="125" r="14" fill="#d1d5db" stroke="#1a1a1a" strokeWidth="1"/>
+                  <path d="M315 111 L315 139 M301 125 L329 125" stroke="#1a1a1a" strokeWidth="2" />
+                </g>
+
+                {/* Car Body Main */}
+                <path d="M15 100 Q15 70 50 60 L110 35 L250 35 L340 70 Q380 75 385 100 L385 115 Q385 125 365 125 L345 125 Q345 95 315 95 Q285 95 285 125 L115 125 Q115 95 85 95 Q55 95 55 125 L35 125 Q15 125 15 100 Z" 
+                      fill="#F7C948" stroke="#DCA010" strokeWidth="2" />
+
+                {/* Windows */}
+                <path d="M120 40 L240 40 L330 70 L120 70 Z" fill="#222" />
+                <path d="M190 40 L190 70" stroke="#F7C948" strokeWidth="4" />
+                
+                {/* Taxi Sign */}
+                <g transform="translate(180, 15)">
+                  <rect x="0" y="0" width="60" height="20" rx="3" fill="#F7C948" stroke="#111" strokeWidth="2" />
+                  <rect x="5" y="4" width="8" height="6" fill="#111" />
+                  <rect x="18" y="10" width="8" height="6" fill="#111" />
+                  <rect x="31" y="4" width="8" height="6" fill="#111" />
+                  <rect x="44" y="10" width="8" height="6" fill="#111" />
+                </g>
+
+                {/* Side Details */}
+                <rect x="120" y="80" width="160" height="15" fill="none" />
+                <rect x="120" y="80" width="10" height="10" fill="#111" />
+                <rect x="130" y="90" width="10" height="5" fill="#111" />
+                <rect x="140" y="80" width="10" height="10" fill="#111" />
+                <rect x="250" y="90" width="10" height="5" fill="#111" />
+                <rect x="260" y="80" width="10" height="10" fill="#111" />
+                <rect x="270" y="90" width="10" height="5" fill="#111" />
+
+                <text x="200" y="94" fontSize="22" fontWeight="900" fill="#111" textAnchor="middle" style={{fontFamily: 'Arial, sans-serif'}}>TAXI</text>
+
+                <rect x="200" y="75" width="15" height="4" rx="2" fill="#111" opacity="0.8" />
+                <rect x="260" y="75" width="15" height="4" rx="2" fill="#111" opacity="0.8" />
+                
+                {/* Lights */}
+                <path d="M380 95 L385 105 L370 105 Z" fill="#FFF" opacity="0.9" />
+                <path d="M15 90 L10 100 L20 100 Z" fill="#CC0000" />
+             </svg>
            </div>
         </div>
       </div>
 
-      {/* --- FEATURES GRID --- */}
+      {/* --- SERVICES GRID (Updated from legacy web) --- */}
       <div className="bg-black py-20 border-b border-zinc-800">
-        <div className="container mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10">
-           <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
-              <ShieldCheck className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
-              <h3 className="text-xl font-bold mb-2">Seguridad Garantizada</h3>
-              <p className="text-gray-400">Conductores profesionales verificados y vehículos de alta gama desinfectados.</p>
-           </div>
-           <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
-              <Clock className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
-              <h3 className="text-xl font-bold mb-2">Puntualidad Absoluta</h3>
-              <p className="text-gray-400">Llegamos a tiempo, siempre. Sistema de seguimiento en tiempo real.</p>
-           </div>
-           <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
-              <Star className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
-              <h3 className="text-xl font-bold mb-2">Experiencia Premium</h3>
-              <p className="text-gray-400">Atención personalizada, asistencia especial y confort máximo en cada viaje.</p>
-           </div>
+        <div className="container mx-auto px-6">
+          <h2 className="text-3xl font-black text-center mb-12 uppercase">Nuestros <span className="text-yellow-400">Servicios</span></h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+             
+             {/* Camino de Santiago */}
+             <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
+                <Backpack className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
+                <h3 className="text-xl font-bold mb-2">Camino de Santiago</h3>
+                <p className="text-gray-400">Servicio especializado para peregrinos. Transporte de mochilas etapa a etapa y traslados de fin de etapa.</p>
+             </div>
+
+             {/* Airports */}
+             <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
+                <Plane className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
+                <h3 className="text-xl font-bold mb-2">Aeropuertos y Estaciones</h3>
+                <p className="text-gray-400">Conexiones directas con Lavacolla (Santiago), Peinador (Vigo) y Alvedro (Coruña). Puntualidad garantizada.</p>
+             </div>
+
+             {/* Events / 24H */}
+             <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
+                <Clock className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
+                <h3 className="text-xl font-bold mb-2">Servicio 24 Horas</h3>
+                <p className="text-gray-400">Disponibles día y noche. Servicios para bodas, eventos, mutuas, rehabilitación y paquetería urgente.</p>
+             </div>
+          </div>
         </div>
       </div>
 
@@ -152,7 +220,7 @@ const App: React.FC = () => {
               <div className="bg-black border border-zinc-800 p-8 rounded-2xl shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-yellow-600"></div>
                 <h2 className="text-3xl font-bold mb-8 flex items-center gap-2">
-                  <Navigation className="text-yellow-400" /> Reserva tu Ruta
+                  <Navigation className="text-yellow-400" /> Pedir Taxi
                 </h2>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -178,37 +246,66 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Destination */}
+                  {/* Destination Toggle */}
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Destino</label>
+                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider flex justify-between items-center">
+                      Destino
+                      <label className="flex items-center gap-2 text-xs normal-case font-normal text-yellow-400 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={useCustomDest} 
+                          onChange={toggleCustomDest}
+                          className="accent-yellow-400 w-4 h-4" 
+                        />
+                        Dirección exacta / Otra
+                      </label>
+                    </label>
+                    
                     <div className="relative">
-                      <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
-                      <select 
-                        name="destination" 
-                        value={bookingData.destination}
-                        onChange={handleInputChange}
-                        className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400 appearance-none"
-                        required
-                      >
-                        <option value="">Selecciona destino</option>
-                        {CITIES.map(city => (
-                          <option key={city.id} value={city.id} disabled={city.id === bookingData.origin}>
-                            {city.name}
-                          </option>
-                        ))}
-                      </select>
+                      {useCustomDest ? (
+                        <>
+                          <Map className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
+                          <input
+                            type="text"
+                            name="customAddress"
+                            value={bookingData.customAddress}
+                            onChange={handleInputChange}
+                            placeholder="Ej: Rúa do Franco, 15, Santiago..."
+                            className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400"
+                            required
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
+                          <select 
+                            name="destination" 
+                            value={bookingData.destination}
+                            onChange={handleInputChange}
+                            className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400 appearance-none"
+                            required
+                          >
+                            <option value="">Selecciona destino</option>
+                            {CITIES.map(city => (
+                              <option key={city.id} value={city.id} disabled={city.id === bookingData.origin}>
+                                {city.name}
+                              </option>
+                            ))}
+                          </select>
+                        </>
+                      )}
                     </div>
                   </div>
 
                   {/* Assistance */}
                   <div className="space-y-3">
-                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Asistencia y Extras</label>
+                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Opciones</label>
                     <div className="grid grid-cols-2 gap-3">
                       {ASSISTANCE_OPTIONS.map(opt => (
                         <div 
                           key={opt.id}
                           onClick={() => handleAssistanceToggle(opt.id)}
-                          className={`cursor-pointer px-3 py-2 rounded-lg border text-sm transition-all text-center ${bookingData.assistance.includes(opt.id) ? 'bg-yellow-400 text-black border-yellow-400 font-bold' : 'bg-zinc-900 border-zinc-700 text-gray-400 hover:border-gray-500'}`}
+                          className={`cursor-pointer px-3 py-2 rounded-lg border text-sm transition-all text-center flex items-center justify-center ${bookingData.assistance.includes(opt.id) ? 'bg-yellow-400 text-black border-yellow-400 font-bold' : 'bg-zinc-900 border-zinc-700 text-gray-400 hover:border-gray-500'}`}
                         >
                           {opt.label}
                         </div>
@@ -218,12 +315,12 @@ const App: React.FC = () => {
 
                   {/* Notes */}
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Solicitudes Especiales</label>
+                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Observaciones</label>
                     <textarea 
                       name="notes"
                       value={bookingData.notes}
                       onChange={handleInputChange}
-                      placeholder="Escribe aquí si necesitas algo más..."
+                      placeholder="Ej: Llevo 3 maletas grandes..."
                       className="w-full bg-zinc-900 border border-zinc-700 text-white p-4 rounded-xl focus:outline-none focus:border-yellow-400 h-24 resize-none"
                     ></textarea>
                   </div>
@@ -232,7 +329,7 @@ const App: React.FC = () => {
                     type="submit"
                     className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-4 rounded-xl text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-yellow-400/20"
                   >
-                    Confirmar Viaje
+                    Confirmar Reserva
                   </button>
                 </form>
               </div>
@@ -242,13 +339,13 @@ const App: React.FC = () => {
             <div className="w-full lg:w-2/3 flex flex-col gap-6">
               <div className="flex items-center justify-between">
                 <div>
-                   <h3 className="text-2xl font-bold text-white">Mapa en Tiempo Real</h3>
-                   <p className="text-gray-400">Visualización de ruta estimada</p>
+                   <h3 className="text-2xl font-bold text-white">Cobertura Galicia</h3>
+                   <p className="text-gray-400">Base central en <span className="text-yellow-400 font-bold">Caldas de Reis</span></p>
                 </div>
                 {simulationActive && (
                   <div className="flex items-center gap-2 text-yellow-400 animate-pulse">
                     <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
-                    <span className="text-sm font-bold uppercase">Simulando Ruta</span>
+                    <span className="text-sm font-bold uppercase">Calculando Ruta en Google Maps</span>
                   </div>
                 )}
               </div>
@@ -257,6 +354,8 @@ const App: React.FC = () => {
                 originId={bookingData.origin} 
                 destinationId={bookingData.destination}
                 isSimulating={simulationActive}
+                isCustomDestination={useCustomDest}
+                customAddress={bookingData.customAddress}
               />
             </div>
 
@@ -267,15 +366,17 @@ const App: React.FC = () => {
       {/* --- FOOTER --- */}
       <footer className="bg-black border-t border-zinc-800 py-12">
         <div className="container mx-auto px-6 text-center">
-          <h2 className="text-2xl font-black text-white mb-4">TAXI GALICIA <span className="text-yellow-400">PRO</span></h2>
-          <div className="flex justify-center gap-6 mb-8 text-gray-400">
-             <a href="#" className="hover:text-yellow-400 transition-colors">Términos</a>
-             <a href="#" className="hover:text-yellow-400 transition-colors">Privacidad</a>
-             <a href="#" className="hover:text-yellow-400 transition-colors">Contacto</a>
+          <h2 className="text-2xl font-black text-white mb-2">TAXI <span className="text-yellow-400">VERO CALDAS</span></h2>
+          <p className="text-zinc-500 mb-6 max-w-md mx-auto">Servicio profesional de taxi en Caldas de Reis. Conectamos el Camino de Santiago y aeropuertos con comodidad y seguridad.</p>
+          
+          <div className="flex justify-center gap-6 mb-8 text-gray-400 text-sm">
+             <span className="hover:text-yellow-400 transition-colors cursor-pointer">Caldas de Reis</span>
+             <span className="hover:text-yellow-400 transition-colors cursor-pointer">Santiago de Compostela</span>
+             <span className="hover:text-yellow-400 transition-colors cursor-pointer">Vigo</span>
           </div>
-          <p className="text-zinc-600 text-sm">© {new Date().getFullYear()} Taxi Galicia. Todos los derechos reservados.</p>
-          <div className="mt-4 flex items-center justify-center gap-2 text-zinc-700 text-xs">
-            <Phone size={12} /> Soporte 24/7
+          <p className="text-zinc-700 text-xs">© {new Date().getFullYear()} Taxi Vero Caldas. Todos los derechos reservados.</p>
+          <div className="mt-4 flex items-center justify-center gap-2 text-zinc-600 text-xs">
+            <Phone size={12} /> Atención preferente por WhatsApp
           </div>
         </div>
       </footer>

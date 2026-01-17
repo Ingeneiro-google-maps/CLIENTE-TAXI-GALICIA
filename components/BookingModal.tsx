@@ -12,26 +12,21 @@ interface BookingModalProps {
 const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmation }) => {
   if (!isOpen || !confirmation) return null;
 
+  // Logic to show correct destination text
+  const destinationText = confirmation.data.destination === 'custom' 
+    ? `${confirmation.data.customAddress} (Dirección Exacta)`
+    : confirmation.data.destination;
+
   // Construct the message
   const message = `🚕 *NUEVA RESERVA TAXI GALICIA* %0A` +
     `🆔 *ID Reserva:* ${confirmation.id} %0A` +
     `📍 *Origen:* ${confirmation.data.origin} %0A` +
-    `🏁 *Destino:* ${confirmation.data.destination} %0A` +
+    `🏁 *Destino:* ${destinationText} %0A` +
     `♿ *Asistencia:* ${confirmation.data.assistance.length > 0 ? confirmation.data.assistance.join(', ') : 'Ninguna'} %0A` +
     `📝 *Notas:* ${confirmation.data.notes || 'Sin notas adicionales'} %0A` +
     `📅 *Fecha Solicitud:* ${confirmation.timestamp.toLocaleDateString()} %0A` +
     `%0A👋 _Hola, me gustaría confirmar esta reserva._`;
 
-  // Determine URL
-  // The provided link is a specific message link. We can try to append text, but it depends on the link type.
-  // Standard WA API: https://wa.me/<number>?text=<encoded_text>
-  // Provided link: https://wa.me/message/IWHB27KLZRBFL1
-  // We will provide a copy button and a direct link button.
-  
-  // For the sake of the demo, we will create a link that includes the text if possible, 
-  // or instruct the user to paste it. 
-  // Since we don't have the underlying number for the shortlink, we'll try to open the shortlink directly.
-  
   const handleCopy = () => {
     const rawMessage = message.replace(/%0A/g, '\n').replace(/\*/g, '').replace(/_/g, '');
     navigator.clipboard.writeText(rawMessage);
@@ -61,12 +56,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
         {/* Content */}
         <div className="p-6 space-y-6">
           <div className="text-center space-y-2">
-            <p className="text-zinc-300">Para finalizar su reserva, por favor envíe los detalles generados a nuestro WhatsApp oficial.</p>
+            <p className="text-zinc-300">Para finalizar su reserva, envíe los detalles generados.</p>
           </div>
 
           <div className="bg-black p-4 rounded-lg border border-zinc-800 text-sm font-mono text-zinc-400 break-words">
             <p><span className="text-yellow-500">Origen:</span> {confirmation.data.origin}</p>
-            <p><span className="text-yellow-500">Destino:</span> {confirmation.data.destination}</p>
+            <p><span className="text-yellow-500">Destino:</span> {destinationText}</p>
             <p><span className="text-yellow-500">ID:</span> {confirmation.id}</p>
           </div>
 
@@ -82,7 +77,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
               Confirmar en WhatsApp
             </a>
             <p className="text-xs text-center text-zinc-500">
-              *Se copiarán los datos automáticamente al pulsar el botón.
+              *Se copiarán los datos automáticamente.
             </p>
           </div>
         </div>
