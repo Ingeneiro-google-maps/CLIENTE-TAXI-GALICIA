@@ -3,7 +3,7 @@ import { CITIES, ASSISTANCE_OPTIONS, VIDEO_BG_URL } from './constants';
 import { BookingData, BookingConfirmation } from './types';
 import GaliciaMap from './components/GaliciaMap';
 import BookingModal from './components/BookingModal';
-import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack } from 'lucide-react';
+import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone } from 'lucide-react';
 
 const App: React.FC = () => {
   const [bookingData, setBookingData] = useState<BookingData>({
@@ -12,6 +12,8 @@ const App: React.FC = () => {
     customAddress: '',
     assistance: [],
     notes: '',
+    name: '',
+    phone: '',
   });
 
   const [useCustomDest, setUseCustomDest] = useState(false);
@@ -62,6 +64,7 @@ const App: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!bookingData.name || !bookingData.phone) return;
     if (!bookingData.origin) return;
     if (!useCustomDest && !bookingData.destination) return;
     if (useCustomDest && !bookingData.customAddress) return;
@@ -224,6 +227,41 @@ const App: React.FC = () => {
                 </h2>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  
+                  {/* Contact Info (NEW) */}
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Nombre y Apellido</label>
+                      <div className="relative">
+                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
+                        <input
+                          type="text"
+                          name="name"
+                          value={bookingData.name}
+                          onChange={handleInputChange}
+                          placeholder="Ej: Juan Pérez"
+                          className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Teléfono</label>
+                      <div className="relative">
+                         <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={bookingData.phone}
+                          onChange={handleInputChange}
+                          placeholder="Ej: 600 123 456"
+                          className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Origin */}
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Punto de Recogida</label>

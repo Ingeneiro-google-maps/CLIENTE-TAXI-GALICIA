@@ -19,6 +19,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
 
   // Construct the message
   const message = `🚕 *NUEVA RESERVA TAXI GALICIA* %0A` +
+    `👤 *Cliente:* ${confirmation.data.name} %0A` +
+    `📱 *Tel:* ${confirmation.data.phone} %0A` +
     `🆔 *ID Reserva:* ${confirmation.id} %0A` +
     `📍 *Origen:* ${confirmation.data.origin} %0A` +
     `🏁 *Destino:* ${destinationText} %0A` +
@@ -60,9 +62,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
           </div>
 
           <div className="bg-black p-4 rounded-lg border border-zinc-800 text-sm font-mono text-zinc-400 break-words">
+            <p><span className="text-yellow-500">Cliente:</span> {confirmation.data.name}</p>
             <p><span className="text-yellow-500">Origen:</span> {confirmation.data.origin}</p>
             <p><span className="text-yellow-500">Destino:</span> {destinationText}</p>
-            <p><span className="text-yellow-500">ID:</span> {confirmation.id}</p>
           </div>
 
           <div className="flex flex-col gap-3">

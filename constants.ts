@@ -37,5 +37,5 @@ export const ASSISTANCE_OPTIONS = [
 ];
 
 export const WHATSAPP_LINK = "https://wa.me/message/IWHB27KLZRBFL1";
-// Using a road/nature video more appropriate for Caldas/Camino vibe while keeping it professional
-export const VIDEO_BG_URL = "https://joy1.videvo.net/videvo_files/video/free/2019-09/large_watermarked/190828_27_SuperTrees_Drone_4k_017_preview.mp4";
+// Updated to Mexico City Traffic (Angel de la Independencia vibe)
+export const VIDEO_BG_URL = "https://videos.pexels.com/video-files/854671/854671-hd_1920_1080_25fps.mp4";

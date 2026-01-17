@@ -11,6 +11,9 @@ export interface BookingData {
   customAddress?: string; // Specific address if destination is custom
   assistance: string[];
   notes: string;
+  // New fields for customer details
+  name: string;
+  phone: string;
 }
 
 export interface BookingConfirmation {
