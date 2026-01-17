@@ -40,6 +40,7 @@ export const DEFAULT_CONFIG: SiteConfig = {
   heroTitle: "TAXI VERO CALDAS",
   heroSubtitle: "Tu taxi de confianza 24H. Especialistas en el Camino de Santiago, traslados a aeropuertos y servicios a mutuas.",
   videoUrl: "https://videos.pexels.com/video-files/854671/854671-hd_1920_1080_25fps.mp4",
+  // Ensures all new deployments use this link by default
   whatsappUrl: "https://wa.me/message/IWHB27KLZRBFL1",
   
   // Default order: Services -> Transfers -> Fleet -> Reservation

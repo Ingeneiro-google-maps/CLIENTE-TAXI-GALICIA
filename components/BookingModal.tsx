@@ -1,6 +1,6 @@
 import React from 'react';
 import { BookingConfirmation } from '../types';
-import { X, CheckCircle, Smartphone } from 'lucide-react';
+import { X, CheckCircle, Smartphone, Send } from 'lucide-react';
 import { ASSISTANCE_OPTIONS } from '../constants';
 
 interface BookingModalProps {
@@ -27,7 +27,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
   const assistanceText = assistanceLabels.length > 0 ? assistanceLabels.join(', ') : 'Ninguna';
 
   // Construct the message with all details
-  // Using %0A for line breaks in URL, but we also create a raw version for clipboard
   const rawMessage = 
     `🚕 *NUEVA RESERVA TAXI GALICIA*\n` +
     `🆔 *ID Reserva:* ${confirmation.id}\n` +
@@ -38,58 +37,71 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
     `🏁 *Destino:* ${destinationText}\n` +
     `♿ *Asistencia:* ${assistanceText}\n` +
     `📝 *Notas:* ${confirmation.data.notes || 'Sin notas adicionales'}\n` +
-    `📅 *Fecha Solicitud:* ${confirmation.timestamp.toLocaleDateString()} ${confirmation.timestamp.toLocaleTimeString()}\n` +
+    `📅 *Fecha:* ${confirmation.timestamp.toLocaleDateString()} ${confirmation.timestamp.toLocaleTimeString()}\n` +
     `--------------------------------\n` +
-    `👋 _Hola, me gustaría confirmar esta reserva._`;
+    `👋 _Hola, confirmo mi reserva._`;
 
   // Encode for URL
   const encodedMessage = encodeURIComponent(rawMessage);
   
+  // CRITICAL: Ensure we use the provided link or fallback to the specific hardcoded one
+  const targetUrl = (whatsappUrl && whatsappUrl.trim() !== '') 
+    ? whatsappUrl 
+    : "https://wa.me/message/IWHB27KLZRBFL1";
+
   // Construct dynamic WhatsApp Link
-  // Check if url already has params
-  const separator = whatsappUrl.includes('?') ? '&' : '?';
-  const finalLink = `${whatsappUrl}${separator}text=${encodedMessage}`;
+  // Check if url already has params (some short links like wa.me/message/XYZ might not, but api links might)
+  const separator = targetUrl.includes('?') ? '&' : '?';
+  const finalLink = `${targetUrl}${separator}text=${encodedMessage}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(rawMessage);
-    // Optional: Alert removed to make UX smoother, as button indicates action
-    // alert('Mensaje copiado al portapapeles. Pégalo en el chat de WhatsApp.'); 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-      <div className="bg-zinc-900 border border-yellow-500/50 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden relative animate-fade-in-up">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-fade-in-up">
+      <div className="bg-zinc-900 border-2 border-yellow-500 rounded-2xl w-full max-w-md shadow-[0_0_50px_rgba(234,179,8,0.3)] overflow-hidden relative">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-6 text-black text-center">
-          <div className="mx-auto bg-black/20 w-16 h-16 rounded-full flex items-center justify-center mb-3">
-             <CheckCircle size={40} className="text-white" />
+        <div className="bg-yellow-500 p-6 text-black text-center relative overflow-hidden">
+          <div className="absolute inset-0 bg-yellow-400 opacity-50 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/40 to-transparent"></div>
+          
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="bg-black text-yellow-500 w-16 h-16 rounded-full flex items-center justify-center mb-3 shadow-lg">
+               <CheckCircle size={32} strokeWidth={3} />
+            </div>
+            <h2 className="text-3xl font-black uppercase tracking-tighter leading-none mb-1">Reserva Lista</h2>
+            <p className="font-bold opacity-80 text-sm">ID: {confirmation.id}</p>
           </div>
-          <h2 className="text-2xl font-black uppercase tracking-tighter">¡Reserva Iniciada!</h2>
-          <p className="font-semibold opacity-80">Su código: {confirmation.id}</p>
         </div>
 
         <button 
           onClick={onClose} 
-          className="absolute top-4 right-4 text-black/50 hover:text-black transition-colors"
+          className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-black rounded-full p-2 transition-colors z-20"
         >
-          <X size={24} />
+          <X size={20} />
         </button>
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          <div className="text-center space-y-2">
-            <p className="text-zinc-300">Hemos preparado los datos de su viaje.</p>
-            <p className="text-xs text-zinc-500">Pulse el botón para abrir WhatsApp con la información ya escrita.</p>
+          <div className="text-center">
+            <p className="text-white text-lg font-bold">¡Casi hemos terminado!</p>
+            <p className="text-zinc-400 text-sm mt-1">Envía los datos a nuestra central para confirmar el conductor.</p>
           </div>
 
-          <div className="bg-black p-4 rounded-lg border border-zinc-800 text-sm font-mono text-zinc-400 break-words text-left">
-            <p><span className="text-yellow-500">Origen:</span> {confirmation.data.origin}</p>
-            <p><span className="text-yellow-500">Destino:</span> {destinationText}</p>
-            <p className="mt-2"><span className="text-yellow-500">Opciones:</span> {assistanceText}</p>
-            <p className="mt-2 text-xs border-t border-zinc-800 pt-2 italic">
-               "{confirmation.data.notes || 'Sin notas'}"
-            </p>
+          <div className="bg-black/50 p-4 rounded-xl border border-zinc-800 text-sm font-mono text-zinc-300 break-words shadow-inner">
+            <div className="flex justify-between items-start border-b border-zinc-800 pb-2 mb-2">
+                <span className="text-yellow-500 font-bold">Origen</span>
+                <span className="text-right max-w-[60%]">{confirmation.data.origin}</span>
+            </div>
+            <div className="flex justify-between items-start border-b border-zinc-800 pb-2 mb-2">
+                <span className="text-yellow-500 font-bold">Destino</span>
+                <span className="text-right max-w-[60%]">{destinationText}</span>
+            </div>
+             <div className="flex justify-between items-start">
+                <span className="text-yellow-500 font-bold">Cliente</span>
+                <span className="text-right">{confirmation.data.name}</span>
+            </div>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -98,13 +110,15 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
               target="_blank"
               rel="noreferrer"
               onClick={handleCopy}
-              className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl transition-all shadow-[0_4px_14px_rgba(0,255,0,0.3)] hover:scale-[1.02]"
+              className="group flex items-center justify-center gap-3 bg-green-600 hover:bg-green-500 text-white font-black py-4 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(22,163,74,0.4)] hover:shadow-[0_0_30px_rgba(22,163,74,0.6)] hover:-translate-y-1 active:scale-95"
             >
-              <Smartphone size={20} />
-              Enviar Reserva por WhatsApp
+              <Smartphone size={24} className="group-hover:animate-bounce" />
+              <span className="text-lg uppercase tracking-wide">Enviar a Central</span>
+              <Send size={20} className="opacity-60" />
             </a>
+            
             <p className="text-[10px] text-center text-zinc-600 max-w-xs mx-auto">
-              Si el mensaje no aparece automáticamente, ya lo hemos copiado a su portapapeles. Solo tiene que darle a "Pegar" en el chat.
+              Al pulsar, se abrirá WhatsApp con los datos de tu viaje ya escritos. Solo tienes que darle a enviar.
             </p>
           </div>
         </div>
