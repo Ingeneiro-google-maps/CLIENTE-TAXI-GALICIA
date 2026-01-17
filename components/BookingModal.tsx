@@ -1,6 +1,6 @@
 import React from 'react';
 import { BookingConfirmation, SiteConfig } from '../types';
-import { X, MessageCircle, Navigation, Clock, User, Phone } from 'lucide-react';
+import { X, MessageCircle, Navigation, Clock, User, Phone, CheckCheck } from 'lucide-react';
 import { ASSISTANCE_OPTIONS } from '../constants';
 
 interface BookingModalProps {
@@ -27,9 +27,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
   const assistanceText = assistanceLabels.length > 0 ? assistanceLabels.join(', ') : 'Estándar';
 
   // --- WhatsApp Message Construction ---
-  // Using simple formatting for maximum compatibility
-  const whatsappUrl = siteConfig.whatsappUrl;
-  
   // Message format designed to be readable at a glance by the driver/central
   const rawMessage = 
     `*NUEVA RESERVA TAXI* 🚕\n` +
@@ -48,15 +45,26 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
 
   const encodedMessage = encodeURIComponent(rawMessage);
   
-  // Ensure we use the provided link or fallback
-  // The provided link is a WhatsApp Business Short Link: https://wa.me/message/IWHB27KLZRBFL1
-  const targetUrl = (whatsappUrl && whatsappUrl.trim() !== '') 
-    ? whatsappUrl 
-    : "https://wa.me/message/IWHB27KLZRBFL1";
+  // Logic to Determine Target URL
+  // If the admin put a number (e.g. 34600...), we construct the URL.
+  // If they put a full URL, we use it.
+  const configWhatsapp = siteConfig.whatsappUrl || "";
+  let baseUrl = "https://wa.me/message/IWHB27KLZRBFL1"; // Fallback default
+  
+  if (configWhatsapp.trim() !== "") {
+    if (configWhatsapp.startsWith("http")) {
+      baseUrl = configWhatsapp;
+    } else {
+      // Assume it's a raw number
+      // Clean any non-numeric chars just in case, except +
+      const cleanNumber = configWhatsapp.replace(/[^\d+]/g, '');
+      baseUrl = `https://wa.me/${cleanNumber}`;
+    }
+  }
 
   // Check separator logic strictly
-  const separator = targetUrl.includes('?') ? '&' : '?';
-  const finalWhatsappLink = `${targetUrl}${separator}text=${encodedMessage}`;
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  const finalWhatsappLink = `${baseUrl}${separator}text=${encodedMessage}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/95 backdrop-blur-sm animate-fade-in-up">
@@ -72,10 +80,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
         {/* Header Visual */}
         <div className="pt-8 pb-4 px-6 text-center">
             <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl animate-pulse">
-                <MessageCircle size={40} className="text-black fill-current" />
+                <CheckCheck size={40} className="text-black stroke-2" />
             </div>
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight">Reserva Lista</h2>
-            <p className="text-green-400 font-medium">Solo falta un paso</p>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight">Datos Listos</h2>
+            <p className="text-green-400 font-medium">Confirmar envío a Central</p>
         </div>
 
         {/* Ticket Details */}
@@ -115,17 +123,19 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
         <div className="p-6 mt-auto bg-zinc-900 pb-10 md:pb-6">
             <a 
               href={finalWhatsappLink}
+              target="_blank"
+              rel="noreferrer"
               className="group relative w-full flex items-center justify-center gap-3 bg-green-600 hover:bg-green-500 text-white p-5 rounded-2xl transition-all shadow-[0_10px_30px_rgba(22,163,74,0.3)] hover:shadow-[0_10px_40px_rgba(22,163,74,0.5)] transform active:scale-95"
             >
               <div className="absolute inset-0 bg-white/20 rounded-2xl animate-pulse-ring"></div>
               <MessageCircle size={32} className="fill-white text-green-600 z-10" />
               <div className="text-left z-10">
-                  <p className="font-black text-xl uppercase leading-none">Abrir WhatsApp</p>
-                  <p className="text-green-100 text-xs font-medium">y enviar mensaje</p>
+                  <p className="font-black text-lg uppercase leading-none">Confirmar y Enviar</p>
+                  <p className="text-green-100 text-xs font-medium">Abrir conversación con Central</p>
               </div>
             </a>
             <p className="text-center text-zinc-600 text-[10px] mt-4 max-w-xs mx-auto">
-                Al pulsar, se abrirá la conversación con la central. Solo tienes que darle a "Enviar" en tu móvil.
+                Al pulsar, se abrirá WhatsApp con los datos cargados. Solo tienes que enviar el mensaje.
             </p>
         </div>
 

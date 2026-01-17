@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -198,6 +198,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
 
   const isVideoFile = formData.videoUrl.startsWith('data:video');
 
+  // WhatsApp helper logic
+  const isWhatsappNumber = formData.whatsappUrl && /^\d+$/.test(formData.whatsappUrl);
+  const isWhatsappLink = formData.whatsappUrl && formData.whatsappUrl.includes('http');
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
       <div className="bg-zinc-900 border border-yellow-500 rounded-2xl w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl relative">
@@ -314,15 +318,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                     className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none"
                   />
                 </div>
+                 
+                 {/* WhatsApp Config */}
                  <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-400">Link WhatsApp Principal</label>
-                  <input 
-                    type="text" 
-                    name="whatsappUrl" 
-                    value={formData.whatsappUrl} 
-                    onChange={handleChange}
-                    className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none"
-                  />
+                  <label className="text-xs font-bold text-zinc-400 flex items-center gap-2">
+                    <MessageCircle size={14} className="text-green-500" /> Número WhatsApp o Enlace
+                  </label>
+                  <div className="relative">
+                    <input 
+                        type="text" 
+                        name="whatsappUrl" 
+                        value={formData.whatsappUrl} 
+                        onChange={handleChange}
+                        placeholder="Ej: 34600123456"
+                        className={`w-full bg-black border rounded-lg p-3 text-white focus:outline-none focus:border-yellow-500 ${isWhatsappNumber ? 'border-green-500' : 'border-zinc-700'}`}
+                    />
+                    {isWhatsappNumber && (
+                        <div className="absolute right-3 top-3 text-green-500" title="Formato Número Válido">
+                            <CheckCircle size={18} />
+                        </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-zinc-500">
+                    Escribe el <strong>número con código de país</strong> (ej: <code>34666111222</code> para España) o un enlace completo (<code>https://wa.me/...</code>).
+                  </p>
                 </div>
               </div>
               

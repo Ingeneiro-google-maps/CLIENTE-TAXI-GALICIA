@@ -494,7 +494,7 @@ const App: React.FC = () => {
                   type="submit"
                   className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-4 rounded-xl text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-yellow-400/20"
                 >
-                  Confirmar Reserva
+                  Continuar a Confirmación
                 </button>
               </form>
             </div>
