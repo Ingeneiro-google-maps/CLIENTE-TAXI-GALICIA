@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -313,18 +313,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-zinc-400">URL Video de Fondo (MP4)</label>
-                <input 
-                  type="text" 
-                  name="videoUrl" 
-                  value={formData.videoUrl} 
-                  onChange={handleChange}
-                  placeholder="https://..."
-                  className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none font-mono text-xs"
-                />
-                <p className="text-[10px] text-zinc-500">Debe ser un enlace directo a un archivo MP4 (ej: Pexels, Videvo, o hosting propio).</p>
-              </div>
+              {/* VIDEO URL INPUT REMOVED */}
             </div>
 
             {/* 3. Fleet Section (Text) */}
@@ -355,7 +344,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
             {/* 4. Fleet Items (Dynamic List) */}
             <div className="space-y-4">
                <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
-                 <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider">Gestión de Vehículos (Imágenes)</h3>
+                 <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider">Gestión de Vehículos</h3>
                  <button 
                     type="button" 
                     onClick={addFleetItem}
@@ -398,29 +387,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                                   className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm focus:border-yellow-500 focus:outline-none resize-none"
                                 />
                               </div>
-                               <div className="space-y-1">
-                                <label className="text-xs font-bold text-zinc-500">URL de la Imagen</label>
-                                <input 
-                                  type="text"
-                                  value={item.imageUrl}
-                                  onChange={(e) => handleFleetChange(index, 'imageUrl', e.target.value)}
-                                  placeholder="https://..."
-                                  className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs font-mono focus:border-yellow-500 focus:outline-none"
-                                />
-                              </div>
+                              {/* IMAGE URL INPUT REMOVED */}
                            </div>
 
-                           {/* Preview */}
-                           <div className="flex flex-col items-center justify-center">
-                              <div className="w-full h-32 rounded-lg overflow-hidden bg-black border border-zinc-800 mb-2">
-                                <img 
-                                  src={item.imageUrl} 
-                                  alt="Preview" 
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
-                                />
-                              </div>
-                              <span className="text-xs text-zinc-500">Vista Previa</span>
+                           {/* Preview Placeholder */}
+                           <div className="flex items-center justify-center p-4 text-zinc-600 text-xs italic border border-zinc-800 rounded-lg h-32">
+                              Imágenes gestionadas internamente
                            </div>
                         </div>
                     </div>
