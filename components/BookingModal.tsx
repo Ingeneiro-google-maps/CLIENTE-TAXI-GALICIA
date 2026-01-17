@@ -1,6 +1,6 @@
 import React from 'react';
 import { BookingConfirmation, SiteConfig } from '../types';
-import { X, CheckCircle, Smartphone, Send } from 'lucide-react';
+import { X, MessageCircle, Navigation, Clock, User, Phone } from 'lucide-react';
 import { ASSISTANCE_OPTIONS } from '../constants';
 
 interface BookingModalProps {
@@ -24,104 +24,109 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
     return option ? option.label : id;
   });
 
-  const assistanceText = assistanceLabels.length > 0 ? assistanceLabels.join(', ') : 'Ninguna';
+  const assistanceText = assistanceLabels.length > 0 ? assistanceLabels.join(', ') : 'Estándar';
 
-  // --- 1. WhatsApp Message Construction ---
+  // --- WhatsApp Message Construction ---
+  // Using simple formatting for maximum compatibility
   const whatsappUrl = siteConfig.whatsappUrl;
+  
+  // Message format designed to be readable at a glance by the driver/central
   const rawMessage = 
-    `🚕 *NUEVA RESERVA TAXI GALICIA*\n` +
-    `🆔 *ID Reserva:* ${confirmation.id}\n` +
+    `*NUEVA RESERVA TAXI* 🚕\n` +
     `--------------------------------\n` +
-    `👤 *Cliente:* ${confirmation.data.name}\n` +
-    `📱 *Tel:* ${confirmation.data.phone}\n` +
-    `📍 *Origen:* ${confirmation.data.origin}\n` +
-    `🏁 *Destino:* ${destinationText}\n` +
-    `♿ *Asistencia:* ${assistanceText}\n` +
-    `📝 *Notas:* ${confirmation.data.notes || 'Sin notas adicionales'}\n` +
-    `📅 *Fecha:* ${confirmation.timestamp.toLocaleDateString()} ${confirmation.timestamp.toLocaleTimeString()}\n` +
+    `📅 *FECHA:* ${confirmation.timestamp.toLocaleDateString()} - ${confirmation.timestamp.toLocaleTimeString().slice(0,5)}\n` +
+    `👤 *CLIENTE:* ${confirmation.data.name}\n` +
+    `📱 *TELÉFONO:* ${confirmation.data.phone}\n` +
     `--------------------------------\n` +
-    `👋 _Hola, confirmo mi reserva._`;
+    `📍 *DESDE:* ${confirmation.data.origin}\n` +
+    `🏁 *HASTA:* ${destinationText}\n` +
+    `--------------------------------\n` +
+    `ℹ️ *INFO:* ${assistanceText}\n` +
+    `📝 *NOTA:* ${confirmation.data.notes || 'Ninguna'}\n` +
+    `--------------------------------\n` +
+    `🆔 Ref: ${confirmation.id}`;
 
   const encodedMessage = encodeURIComponent(rawMessage);
   
   // Ensure we use the provided link or fallback
+  // The provided link is a WhatsApp Business Short Link: https://wa.me/message/IWHB27KLZRBFL1
   const targetUrl = (whatsappUrl && whatsappUrl.trim() !== '') 
     ? whatsappUrl 
     : "https://wa.me/message/IWHB27KLZRBFL1";
 
+  // Check separator logic strictly
   const separator = targetUrl.includes('?') ? '&' : '?';
   const finalWhatsappLink = `${targetUrl}${separator}text=${encodedMessage}`;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(rawMessage);
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-fade-in-up">
-      <div className="bg-zinc-900 border-2 border-yellow-500 rounded-2xl w-full max-w-md shadow-[0_0_50px_rgba(234,179,8,0.3)] overflow-hidden relative flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/95 backdrop-blur-sm animate-fade-in-up">
+      <div className="bg-zinc-900 border-t-4 md:border-2 border-green-500 md:rounded-2xl rounded-t-3xl w-full max-w-md shadow-[0_0_50px_rgba(34,197,94,0.3)] overflow-hidden relative flex flex-col max-h-[90vh]">
         
-        {/* Header */}
-        <div className="bg-yellow-500 p-6 text-black text-center relative overflow-hidden shrink-0">
-          <div className="absolute inset-0 bg-yellow-400 opacity-50 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/40 to-transparent"></div>
-          
-          <div className="relative z-10 flex flex-col items-center">
-            <div className="bg-black text-yellow-500 w-16 h-16 rounded-full flex items-center justify-center mb-3 shadow-lg">
-               <CheckCircle size={32} strokeWidth={3} />
-            </div>
-            <h2 className="text-3xl font-black uppercase tracking-tighter leading-none mb-1">Reserva Lista</h2>
-            <p className="font-bold opacity-80 text-sm">ID: {confirmation.id}</p>
-          </div>
-        </div>
-
         <button 
           onClick={onClose} 
-          className="absolute top-4 right-4 bg-black/20 hover:bg-black/40 text-black rounded-full p-2 transition-colors z-20"
+          className="absolute top-4 right-4 text-zinc-500 hover:text-white bg-black/20 rounded-full p-2 z-20"
         >
-          <X size={20} />
+          <X size={24} />
         </button>
 
-        {/* Content (Scrollable) */}
-        <div className="p-6 space-y-6 overflow-y-auto">
-          <div className="text-center">
-            <p className="text-white text-lg font-bold">¡Casi hemos terminado!</p>
-            <p className="text-zinc-400 text-sm mt-1">Envía los datos a nuestra central para confirmar el conductor.</p>
-          </div>
+        {/* Header Visual */}
+        <div className="pt-8 pb-4 px-6 text-center">
+            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl animate-pulse">
+                <MessageCircle size={40} className="text-black fill-current" />
+            </div>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight">Reserva Lista</h2>
+            <p className="text-green-400 font-medium">Solo falta un paso</p>
+        </div>
 
-          <div className="bg-black/50 p-4 rounded-xl border border-zinc-800 text-sm font-mono text-zinc-300 break-words shadow-inner">
-             <div className="flex justify-between items-start border-b border-zinc-800 pb-2 mb-2">
-                <span className="text-yellow-500 font-bold">Origen</span>
-                <span className="text-right max-w-[60%]">{confirmation.data.origin}</span>
-            </div>
-            <div className="flex justify-between items-start border-b border-zinc-800 pb-2 mb-2">
-                <span className="text-yellow-500 font-bold">Destino</span>
-                <span className="text-right max-w-[60%]">{destinationText}</span>
-            </div>
-             <div className="flex justify-between items-start">
-                <span className="text-yellow-500 font-bold">Cliente</span>
-                <span className="text-right">{confirmation.data.name}</span>
-            </div>
-          </div>
+        {/* Ticket Details */}
+        <div className="px-6 py-2">
+            <div className="bg-zinc-950/80 rounded-xl border border-zinc-800 p-4 space-y-3 relative overflow-hidden">
+                {/* Decorative side strip */}
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-yellow-500"></div>
 
-          <div className="space-y-4">
-            {/* Primary Action: WhatsApp Only */}
-            <div className="flex flex-col gap-2">
-              <a 
-                href={finalWhatsappLink}
-                target="_blank"
-                rel="noreferrer"
-                onClick={handleCopy}
-                className="group flex items-center justify-center gap-3 bg-green-600 hover:bg-green-500 text-white font-black py-4 px-6 rounded-xl transition-all shadow-[0_0_20px_rgba(22,163,74,0.4)] hover:shadow-[0_0_30px_rgba(22,163,74,0.6)] hover:-translate-y-1 active:scale-95"
-              >
-                <Smartphone size={24} className="group-hover:animate-bounce" />
-                <span className="text-lg uppercase tracking-wide">Enviar a Central</span>
-                <Send size={20} className="opacity-60" />
-              </a>
+                <div className="flex items-start gap-3">
+                    <User className="text-zinc-500 mt-1" size={16} />
+                    <div>
+                        <p className="text-xs text-zinc-500 uppercase font-bold">Cliente</p>
+                        <p className="text-white font-bold">{confirmation.data.name}</p>
+                        <p className="text-zinc-400 text-sm">{confirmation.data.phone}</p>
+                    </div>
+                </div>
+
+                <div className="w-full border-t border-dashed border-zinc-800 my-2"></div>
+
+                <div className="flex items-start gap-3">
+                    <Navigation className="text-zinc-500 mt-1" size={16} />
+                    <div className="w-full">
+                        <p className="text-xs text-zinc-500 uppercase font-bold">Trayecto</p>
+                        <div className="flex justify-between items-center mt-1">
+                             <span className="text-yellow-500 font-bold">{confirmation.data.origin}</span>
+                        </div>
+                        <div className="pl-1 border-l-2 border-zinc-800 ml-1 h-3"></div>
+                         <div className="flex justify-between items-center">
+                             <span className="text-white font-bold">{destinationText}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            
-            <p className="text-[10px] text-center text-zinc-600 max-w-xs mx-auto">
-              Al pulsar, se abrirá WhatsApp con los datos de tu viaje ya escritos. Solo tienes que darle a enviar.
+        </div>
+
+        {/* Big Action Area */}
+        <div className="p-6 mt-auto bg-zinc-900 pb-10 md:pb-6">
+            <a 
+              href={finalWhatsappLink}
+              className="group relative w-full flex items-center justify-center gap-3 bg-green-600 hover:bg-green-500 text-white p-5 rounded-2xl transition-all shadow-[0_10px_30px_rgba(22,163,74,0.3)] hover:shadow-[0_10px_40px_rgba(22,163,74,0.5)] transform active:scale-95"
+            >
+              <div className="absolute inset-0 bg-white/20 rounded-2xl animate-pulse-ring"></div>
+              <MessageCircle size={32} className="fill-white text-green-600 z-10" />
+              <div className="text-left z-10">
+                  <p className="font-black text-xl uppercase leading-none">Abrir WhatsApp</p>
+                  <p className="text-green-100 text-xs font-medium">y enviar mensaje</p>
+              </div>
+            </a>
+            <p className="text-center text-zinc-600 text-[10px] mt-4 max-w-xs mx-auto">
+                Al pulsar, se abrirá la conversación con la central. Solo tienes que darle a "Enviar" en tu móvil.
             </p>
-          </div>
         </div>
 
       </div>
