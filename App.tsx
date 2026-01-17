@@ -96,7 +96,7 @@ const App: React.FC = () => {
     // Optimistic update
     setConfig(newConfig);
     // Save to DB
-    await dbService.saveConfig(newConfig);
+    return await dbService.saveConfig(newConfig);
   };
 
   // --- Booking State ---
@@ -676,6 +676,12 @@ const App: React.FC = () => {
              <span className="hover:text-yellow-400 transition-colors cursor-pointer">Vigo</span>
           </div>
           <p className="text-zinc-700 text-xs">© {new Date().getFullYear()} Taxi Vero Caldas. Todos los derechos reservados.</p>
+          
+          {/* Developer Credit */}
+          <p className="text-zinc-800 text-[10px] mt-2 max-w-lg mx-auto leading-relaxed">
+             System developed by Engineer Orlando Galdamez under the company Star Technology in Portugal, with headquarters in Oporto portugal
+          </p>
+
           <div className="mt-4 flex flex-col items-center justify-center gap-4">
             <div className="flex items-center gap-2 text-zinc-600 text-xs">
                <Phone size={12} /> Atención preferente por WhatsApp

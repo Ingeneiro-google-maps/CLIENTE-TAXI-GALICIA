@@ -8,7 +8,7 @@ interface AdminPanelProps {
   isOpen: boolean;
   onClose: () => void;
   currentConfig: SiteConfig;
-  onSave: (config: SiteConfig) => Promise<void>;
+  onSave: (config: SiteConfig) => Promise<boolean>;
 }
 
 const SECTION_LABELS: Record<string, string> = {
@@ -247,12 +247,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
             ) : (
                 <>
                     <Upload size={16} className="text-zinc-500 group-hover:text-yellow-400 transition-colors" />
-                    <span className="text-zinc-400 text-[10px] group-hover:text-white">Subir MP4 (Máx 6MB)</span>
+                    <span className="text-zinc-400 text-[10px] group-hover:text-white">Subir MP4/MOV (Máx 6MB)</span>
                 </>
             )}
             <input 
                 type="file" 
-                accept="video/mp4,video/webm" 
+                accept="video/mp4,video/webm,video/quicktime" 
                 onChange={(e) => handleVideoUpload(e, fieldName)}
                 className="hidden"
             />

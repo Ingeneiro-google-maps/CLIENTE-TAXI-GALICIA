@@ -122,14 +122,42 @@ const TrafficAssistant: React.FC = () => {
     setError(null);
     setStatusMessage('Conectando con satélite...');
     
+    // Check for Secure Context (HTTPS) - Browser Requirement
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+        setError('El micrófono requiere conexión segura (HTTPS).');
+        return;
+    }
+
     try {
       // 1. Initialize Audio Contexts
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      inputAudioContextRef.current = new AudioContextClass({ sampleRate: 16000 });
-      audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
+      
+      // Initialize Input Context
+      if (!inputAudioContextRef.current) {
+        inputAudioContextRef.current = new AudioContextClass({ sampleRate: 16000 });
+      }
+      
+      // Initialize Output Context
+      if (!audioContextRef.current) {
+         audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
+      }
+
+      // iOS/Safari Compatibility: Resume audio context if suspended
+      if (inputAudioContextRef.current.state === 'suspended') {
+        await inputAudioContextRef.current.resume();
+      }
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
 
       // 2. Get Microphone Access
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
       mediaStreamRef.current = stream;
 
       // 3. Initialize Gemini Client
@@ -226,15 +254,26 @@ const TrafficAssistant: React.FC = () => {
           },
           onerror: (err) => {
             console.error('Gemini Live Error:', err);
-            setError('Error de conexión');
+            // Specific handling for permission errors vs network errors
+            if (err.toString().includes('permission') || err.toString().includes('denied')) {
+                setError('Permiso de micrófono denegado. Actívalo en el navegador.');
+            } else {
+                setError('Error de conexión con el satélite.');
+            }
             cleanupAudio();
           }
         }
       });
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Initialization Error:', err);
-      setError('No se pudo acceder al micrófono o conectar.');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setError('Por favor permite el acceso al micrófono.');
+      } else if (err.name === 'NotFoundError') {
+          setError('No se encontró micrófono en este dispositivo.');
+      } else {
+          setError('No se pudo iniciar el sistema de audio.');
+      }
       cleanupAudio();
     }
   };
@@ -326,8 +365,10 @@ const TrafficAssistant: React.FC = () => {
 
           {/* Instructions */}
           <div className="bg-black p-3 text-[10px] text-zinc-500 border-t border-zinc-800 text-center">
-            "¿Hay accidentes en la AP-9?" <br/>
-            "Verifica tráfico a Santiago"
+            <p className="mb-2">"¿Hay accidentes en la AP-9?" <br/> "Verifica tráfico a Santiago"</p>
+            <p className="text-[9px] text-zinc-700 mt-2 border-t border-zinc-900 pt-1">
+              This system was developed by Engineer Orlando Galdames.
+            </p>
           </div>
         </div>
       )}
