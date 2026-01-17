@@ -35,7 +35,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
     `👤 *CLIENTE:* ${confirmation.data.name}\n` +
     `📱 *TELÉFONO:* ${confirmation.data.phone}\n` +
     `--------------------------------\n` +
-    `📍 *DESDE:* ${confirmation.data.origin}\n` +
+    `📍 *DESDE:* ${confirmation.data.origin}\n`+
     `🏁 *HASTA:* ${destinationText}\n` +
     `--------------------------------\n` +
     `ℹ️ *INFO:* ${assistanceText}\n` +

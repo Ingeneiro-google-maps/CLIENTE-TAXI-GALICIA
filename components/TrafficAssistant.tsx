@@ -75,14 +75,17 @@ const TrafficAssistant: React.FC = () => {
   const SYSTEM_INSTRUCTION = `
     Eres el "Asistente de Viaje y Tráfico" de Taxi Vero Caldas, operando en Galicia, España.
     
-    TU COMPORTAMIENTO:
-    1. Al conectarte, SALUDA EXACTAMENTE ASÍ: "Hola, soy tu asistente de viaje. Puedes aquí consultar tráficos, accidentes y notificarme en la vida de la carretera."
-    2. Después del saludo, espera a que el usuario hable.
-    3. Si el usuario te pregunta por el tráfico, pregúntale: "¿En qué ruta quieres verificar si hay tráfico o algún accidente?"
-    4. Cuando el usuario te diga una ruta (ej: "de Pontevedra a Vigo", "AP-9", "A-55"), USA LA HERRAMIENTA GOOGLE SEARCH INMEDIATAMENTE.
-    5. Busca específicamente: "tráfico DGT Galicia [ruta]", "accidentes hoy [ruta]", "twitter tráfico galicia [ruta]".
-    6. Informa de manera profesional y concisa sobre incidentes, retenciones, clima o si la vía está despejada. Si no encuentras nada relevante, dilo claramente: "He verificado las redes y sistemas de tráfico y no reportan incidencias en esa ruta ahora mismo."
-    7. Sé servicial, rápido y usa un tono profesional de taxista/copiloto.
+    INSTRUCCIÓN DE INICIO:
+    - Tu primera respuesta SIEMPRE debe ser el saludo, independientemente de lo que recibas primero.
+    - SALUDA EXACTAMENTE ASÍ: "Hola, soy tu asistente de viaje. Puedes aquí consultar tráficos, accidentes y notificarme en la vida de la carretera."
+
+    COMPORTAMIENTO:
+    1. Después del saludo, espera a que el usuario hable.
+    2. Si el usuario te pregunta por el tráfico, pregúntale: "¿En qué ruta quieres verificar si hay tráfico o algún accidente?"
+    3. Cuando el usuario te diga una ruta (ej: "de Pontevedra a Vigo", "AP-9", "A-55"), USA LA HERRAMIENTA GOOGLE SEARCH INMEDIATAMENTE.
+    4. Busca específicamente: "tráfico DGT Galicia [ruta]", "accidentes hoy [ruta]", "twitter tráfico galicia [ruta]".
+    5. Informa de manera profesional y concisa sobre incidentes, retenciones, clima o si la vía está despejada. Si no encuentras nada relevante, dilo claramente: "He verificado las redes y sistemas de tráfico y no reportan incidencias en esa ruta ahora mismo."
+    6. Sé servicial, rápido y usa un tono profesional de taxista/copiloto.
   `;
 
   const cleanupAudio = () => {
@@ -110,7 +113,7 @@ const TrafficAssistant: React.FC = () => {
       scriptProcessorRef.current = null;
     }
     
-    // Close Gemini session if method exists (it might not be exposed directly in SDK, but we nullify ref)
+    // Close Gemini session if method exists
     sessionRef.current = null;
     
     setIsConnected(false);
@@ -120,29 +123,29 @@ const TrafficAssistant: React.FC = () => {
 
   const startSession = async () => {
     setError(null);
-    setStatusMessage('Conectando con satélite...');
-    
-    // IMPORTANT: Verify browser capabilities instead of manual string check
+    setStatusMessage('Iniciando sistemas...');
+
+    // 1. Browser Capability Check
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-       setError('El navegador no soporta acceso al micrófono o la conexión no es segura.');
+       setError('Tu navegador no soporta acceso al micrófono o la conexión no es segura.');
        return;
     }
 
     try {
-      // 1. Initialize Audio Contexts
+      // 2. Initialize Audio Contexts immediately (User Interaction Context)
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       
-      // Initialize Input Context
+      // Initialize Input Context (16kHz for Gemini)
       if (!inputAudioContextRef.current) {
         inputAudioContextRef.current = new AudioContextClass({ sampleRate: 16000 });
       }
       
-      // Initialize Output Context
+      // Initialize Output Context (24kHz for Gemini)
       if (!audioContextRef.current) {
          audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
       }
 
-      // iOS/Safari Compatibility: Resume audio context if suspended
+      // iOS/Mobile Compatibility: Force resume audio context
       if (inputAudioContextRef.current.state === 'suspended') {
         await inputAudioContextRef.current.resume();
       }
@@ -150,28 +153,31 @@ const TrafficAssistant: React.FC = () => {
         await audioContextRef.current.resume();
       }
 
-      // 2. Get Microphone Access
+      setStatusMessage('Conectando con satélite...');
+
+      // 3. Get Microphone Access
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true
+          autoGainControl: true,
+          sampleRate: 16000
         } 
       });
       mediaStreamRef.current = stream;
 
-      // 3. Initialize Gemini Client
+      // 4. Initialize Gemini Client
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
-      // 4. Connect to Live API
+      // 5. Connect to Live API
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
-          tools: [{ googleSearch: {} }], // Enable Internet Search
+          tools: [{ googleSearch: {} }],
           responseModalities: [Modality.AUDIO],
           speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }, // Professional voice
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
           },
         },
         callbacks: {
@@ -200,6 +206,15 @@ const TrafficAssistant: React.FC = () => {
 
             source.connect(processor);
             processor.connect(inputAudioContextRef.current.destination);
+
+            // --- AUTO-START TRIGGER ---
+            // Send 1 second of "silence" to force the model to wake up and say the greeting
+            // without waiting for user input.
+            const silenceFrame = new Float32Array(16000); // 1 sec at 16k
+            const silenceBlob = createBlob(silenceFrame);
+            sessionPromise.then(session => {
+               session.sendRealtimeInput({ media: silenceBlob });
+            });
           },
           onmessage: async (msg: LiveServerMessage) => {
             // Handle Audio Output from Gemini
@@ -254,9 +269,8 @@ const TrafficAssistant: React.FC = () => {
           },
           onerror: (err) => {
             console.error('Gemini Live Error:', err);
-            // Specific handling for permission errors vs network errors
             if (err.toString().includes('permission') || err.toString().includes('denied')) {
-                setError('Permiso de micrófono denegado. Actívalo en el navegador.');
+                setError('Permiso de micrófono denegado.');
             } else {
                 setError('Error de conexión con el satélite.');
             }
@@ -268,11 +282,11 @@ const TrafficAssistant: React.FC = () => {
     } catch (err: any) {
       console.error('Initialization Error:', err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setError('Por favor permite el acceso al micrófono.');
+          setError('Permiso denegado. Habilita el micrófono.');
       } else if (err.name === 'NotFoundError') {
-          setError('No se encontró micrófono en este dispositivo.');
+          setError('No se encontró micrófono.');
       } else {
-          setError('No se pudo iniciar el sistema de audio.');
+          setError('Error al iniciar audio. Refresca la página.');
       }
       cleanupAudio();
     }

@@ -92,18 +92,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Limit increased to 60GB as requested
-    // 60 GB * 1024 MB * 1024 KB * 1024 Bytes
-    const MAX_SIZE_BYTES = 60 * 1024 * 1024 * 1024; 
-
-    if (file.size > MAX_SIZE_BYTES) {
-      alert("El archivo supera el límite máximo del sistema (60 GB).");
-      return;
-    }
-
-    // Warning for very large files regarding browser performance
-    if (file.size > 100 * 1024 * 1024) {
-       console.warn("Procesando archivo grande. Esto puede tomar unos momentos.");
+    // Warning for large files that might crash the DB call
+    // Neon JSONB rows have limits.
+    if (file.size > 10 * 1024 * 1024) { // 10MB warning
+       alert("ADVERTENCIA: Estás subiendo un video muy pesado. \n\nEs probable que falle al guardar en la base de datos (Error 413 o Timeout).\n\nPara videos de +10MB, por favor súbelos a una nube (AWS, Vimeo, YouTube) y usa la opción de URL.");
     }
 
     const reader = new FileReader();
@@ -112,9 +104,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
       setFormData(prev => ({ ...prev, [fieldName]: result }));
     };
     
-    // Use proper error handling for large files
     reader.onerror = () => {
-        alert("Error al leer el archivo. Es posible que el navegador no tenga suficiente memoria para este video.");
+        alert("Error al leer el archivo. Es posible que el navegador no tenga suficiente memoria.");
     };
 
     reader.readAsDataURL(file);
@@ -187,7 +178,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
         }, 500);
     } else {
         setDbStatus('error');
-        setDbMessage('Error al guardar en la base de datos.');
+        setDbMessage('Error al guardar. Archivo demasiado grande.');
     }
   };
 
@@ -261,7 +252,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
             ) : (
                 <>
                     <Upload size={16} className="text-zinc-500 group-hover:text-yellow-400 transition-colors" />
-                    <span className="text-zinc-400 text-[10px] group-hover:text-white">Subir MP4/MOV (+50MB)</span>
+                    <span className="text-zinc-400 text-[10px] group-hover:text-white">Subir MP4/MOV</span>
                 </>
             )}
             <input 
