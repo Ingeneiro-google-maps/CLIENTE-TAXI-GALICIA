@@ -231,8 +231,13 @@ const TrafficAssistant: React.FC = () => {
             processor.connect(inputAudioContextRef.current.destination);
 
             // --- AUTO-START TRIGGER ---
-            // Removed manual text send to avoid 'Property send does not exist on type Session' error.
-            // The system instruction ensures the model greets first.
+            // Send 1 second of "silence" to force the model to wake up and say the greeting
+            // without waiting for user input.
+            const silenceFrame = new Float32Array(16000); // 1 sec at 16k
+            const silenceBlob = createBlob(silenceFrame);
+            sessionPromise.then(session => {
+               session.sendRealtimeInput({ media: silenceBlob });
+            });
           },
           onmessage: async (msg: LiveServerMessage) => {
             // Handle Audio Output from Gemini

@@ -92,10 +92,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // LIMIT CHECK: 1.5MB max for DB storage to be safe with JSONB
-    const MAX_SIZE_MB = 1.5;
+    // LIMIT CHECK: Increased to 30MB as requested
+    const MAX_SIZE_MB = 30.0;
     if (file.size > MAX_SIZE_MB * 1024 * 1024) { 
-       alert(`ERROR: El video es demasiado grande (${(file.size / 1024 / 1024).toFixed(2)}MB).\n\nPara guardar en la base de datos, el límite es ${MAX_SIZE_MB}MB.\n\nSOLUCIÓN: Sube el video a YouTube, Vimeo o un hosting externo y copia la URL en el campo de texto.`);
+       alert(`ERROR: El video es demasiado grande (${(file.size / 1024 / 1024).toFixed(2)}MB).\n\nEl límite máximo configurado es de ${MAX_SIZE_MB}MB.\n\nSOLUCIÓN: Comprime el video o usa una URL externa.`);
        return;
     }
 
@@ -158,7 +158,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setDbStatus('saving');
-    setDbMessage('Guardando configuración...');
+    setDbMessage('Guardando configuración... (Videos grandes pueden tardar)');
     
     // 1. Save DB URL Locally
     if (dbUrl.trim()) {
@@ -179,7 +179,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
         }, 1000);
     } else {
         setDbStatus('error');
-        setDbMessage('Error al guardar.');
+        setDbMessage('Error al guardar. ¿El archivo es muy pesado?');
     }
   };
 
@@ -253,7 +253,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
             ) : (
                 <>
                     <Upload size={16} className="text-zinc-500 group-hover:text-yellow-400 transition-colors" />
-                    <span className="text-zinc-400 text-[10px] group-hover:text-white">Subir MP4 (Max 1.5MB)</span>
+                    <span className="text-zinc-400 text-[10px] group-hover:text-white">Subir MP4 (Max 30MB)</span>
                 </>
             )}
             <input 
