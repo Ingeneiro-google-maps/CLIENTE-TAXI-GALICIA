@@ -13,6 +13,7 @@ const App: React.FC = () => {
   const [config, setConfig] = useState<SiteConfig>(DEFAULT_CONFIG);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [activeVideoUrl, setActiveVideoUrl] = useState('');
 
   // Load Config from Neon Database on Mount
   useEffect(() => {
@@ -47,6 +48,27 @@ const App: React.FC = () => {
 
     return () => { isMounted = false; };
   }, []);
+
+  // Determine Random Video on Config Load
+  useEffect(() => {
+    if (!isLoadingConfig && config) {
+        const availableVideos = [
+            config.videoUrlA,
+            config.videoUrlB,
+            config.videoUrlC,
+            config.videoUrlD
+        ].filter(v => v && v.trim() !== '');
+
+        if (availableVideos.length > 0) {
+            // Pick random index
+            const randomIndex = Math.floor(Math.random() * availableVideos.length);
+            setActiveVideoUrl(availableVideos[randomIndex]);
+        } else {
+            // Fallback to legacy single url or default
+            setActiveVideoUrl(config.videoUrl || DEFAULT_CONFIG.videoUrlA);
+        }
+    }
+  }, [isLoadingConfig, config]);
 
   // PWA Logic: Detect if installed/mobile and prioritize "Request Taxi"
   useEffect(() => {
@@ -558,14 +580,14 @@ const App: React.FC = () => {
           <div className="absolute inset-0 bg-black/60 z-10"></div>
           {/* Key added to force reload when URL changes via admin panel */}
           <video 
-            key={config.videoUrl}
+            key={activeVideoUrl} 
             autoPlay 
             loop 
             muted 
             playsInline 
             className="w-full h-full object-cover opacity-80"
           >
-            <source src={config.videoUrl} type="video/mp4" />
+            {activeVideoUrl && <source src={activeVideoUrl} type="video/mp4" />}
           </video>
         </div>
 

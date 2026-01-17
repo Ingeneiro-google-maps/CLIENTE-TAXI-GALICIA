@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -87,7 +87,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     }
   };
 
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Generalized upload handler for any field
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>, fieldName: keyof SiteConfig) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -100,13 +101,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     const reader = new FileReader();
     reader.onload = (event) => {
       const result = event.target?.result as string;
-      setFormData(prev => ({ ...prev, videoUrl: result }));
+      setFormData(prev => ({ ...prev, [fieldName]: result }));
     };
     reader.readAsDataURL(file);
   };
 
-  const clearVideo = () => {
-      setFormData(prev => ({ ...prev, videoUrl: '' }));
+  const clearVideo = (fieldName: keyof SiteConfig) => {
+      setFormData(prev => ({ ...prev, [fieldName]: '' }));
   };
 
   // Fleet Management Functions
@@ -196,11 +197,69 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
 
   const statusUI = getStatusUI();
 
-  const isVideoFile = formData.videoUrl.startsWith('data:video');
-
   // WhatsApp helper logic
   const isWhatsappNumber = formData.whatsappUrl && /^\d+$/.test(formData.whatsappUrl);
-  const isWhatsappLink = formData.whatsappUrl && formData.whatsappUrl.includes('http');
+
+  // Helper component to render video slots
+  const renderVideoSlot = (slot: string, fieldName: keyof SiteConfig) => {
+    const value = formData[fieldName] as string;
+    const isFile = value && value.startsWith('data:video');
+
+    return (
+      <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-3">
+         <div className="flex justify-between items-center">
+             <label className="text-xs font-bold text-yellow-500 flex items-center gap-2">
+               <PlaySquare size={14} /> Opción {slot}
+             </label>
+             {value && <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full">Activo</span>}
+         </div>
+         
+         {/* URL Input */}
+         <div className="flex gap-2">
+            <input 
+              type="text" 
+              name={fieldName} 
+              value={isFile ? '(Archivo local cargado)' : value} 
+              onChange={handleChange}
+              disabled={isFile}
+              placeholder={`URL Video ${slot} (https://...)`}
+              className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none font-mono text-[10px] disabled:opacity-50"
+            />
+            {isFile && (
+              <button 
+                type="button" 
+                onClick={() => clearVideo(fieldName)} 
+                className="bg-red-900/30 text-red-400 px-3 py-1 rounded-lg hover:bg-red-900/50"
+                title="Borrar video"
+              >
+                  <Trash2 size={14} />
+              </button>
+            )}
+         </div>
+
+         {/* Upload Button */}
+         <label className={`flex items-center justify-center gap-2 border border-dashed ${isFile ? 'border-green-500 bg-green-900/10' : 'border-zinc-700 hover:border-yellow-500 hover:bg-black'} p-3 rounded-lg cursor-pointer transition-all group`}>
+            {isFile ? (
+                <>
+                    <FileVideo size={16} className="text-green-500" />
+                    <span className="text-green-400 font-bold text-[10px]">Video Cargado</span>
+                </>
+            ) : (
+                <>
+                    <Upload size={16} className="text-zinc-500 group-hover:text-yellow-400 transition-colors" />
+                    <span className="text-zinc-400 text-[10px] group-hover:text-white">Subir MP4 (Máx 6MB)</span>
+                </>
+            )}
+            <input 
+                type="file" 
+                accept="video/mp4,video/webm" 
+                onChange={(e) => handleVideoUpload(e, fieldName)}
+                className="hidden"
+            />
+         </label>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
@@ -226,7 +285,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
         <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
           <form id="admin-form" onSubmit={handleSubmit} className="space-y-12">
             
-            {/* 0. DATABASE CONNECTION (CRITICAL) */}
+            {/* 0. DATABASE CONNECTION */}
             <div className={`border p-4 rounded-xl space-y-3 transition-colors ${dbStatus === 'error' ? 'border-red-500/50 bg-red-900/10' : dbStatus === 'ready' ? 'border-green-500/50 bg-green-900/5' : 'border-yellow-500/30 bg-yellow-900/5'}`}>
                <div className="flex justify-between items-center">
                   <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
@@ -356,72 +415,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                 />
               </div>
 
-               <div className="space-y-2">
+               {/* VIDEO SLOTS A, B, C, D */}
+               <div className="space-y-3">
                 <label className="text-xs font-bold text-zinc-400 flex items-center gap-2">
-                    <Video size={14} /> Video de Fondo (MP4)
+                    <Video size={14} /> Videos de Fondo (Rotativos)
                 </label>
+                <p className="text-[10px] text-zinc-500 mb-2">
+                  El sistema elegirá al azar uno de los videos configurados cada vez que se cargue la página.
+                </p>
                 
-                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-4">
-                   {/* 1. URL Option */}
-                   <div className="space-y-2">
-                       <label className="text-[10px] text-zinc-500 font-bold uppercase">Opción A: Pegar Enlace (Recomendado)</label>
-                       <div className="flex gap-2">
-                         <input 
-                           type="text" 
-                           name="videoUrl" 
-                           value={isVideoFile ? '(Archivo local cargado - Limpia para usar URL)' : formData.videoUrl} 
-                           onChange={handleChange}
-                           disabled={isVideoFile}
-                           placeholder="https://..."
-                           className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 focus:outline-none font-mono text-xs disabled:opacity-50"
-                         />
-                         {isVideoFile && (
-                            <button 
-                              type="button" 
-                              onClick={clearVideo} 
-                              className="bg-red-900/30 text-red-400 px-3 py-2 rounded-lg hover:bg-red-900/50"
-                            >
-                                <Trash2 size={16} />
-                            </button>
-                         )}
-                       </div>
-                   </div>
-
-                   <div className="relative flex items-center py-2">
-                       <div className="flex-grow border-t border-zinc-800"></div>
-                       <span className="flex-shrink-0 mx-4 text-zinc-600 text-[10px] uppercase font-bold">O también</span>
-                       <div className="flex-grow border-t border-zinc-800"></div>
-                   </div>
-
-                   {/* 2. Upload Option */}
-                   <div>
-                       <label className="text-[10px] text-zinc-500 font-bold uppercase mb-2 block">Opción B: Subir Archivo (Guardar en DB)</label>
-                       <label className={`flex items-center justify-center gap-3 bg-zinc-900 border border-dashed ${isVideoFile ? 'border-green-500 bg-green-900/10' : 'border-zinc-700 hover:border-yellow-500 hover:bg-black'} p-6 rounded-lg cursor-pointer transition-all group`}>
-                            {isVideoFile ? (
-                                <>
-                                    <FileVideo size={24} className="text-green-500" />
-                                    <div className="text-center">
-                                        <p className="text-green-400 font-bold text-sm">¡Video Cargado!</p>
-                                        <p className="text-green-600/70 text-xs">Listo para guardar</p>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <Upload size={24} className="text-zinc-500 group-hover:text-yellow-400 transition-colors" />
-                                    <div className="text-center">
-                                        <p className="text-zinc-300 font-bold text-sm group-hover:text-white">Click para seleccionar video</p>
-                                        <p className="text-zinc-500 text-xs">Máx 6MB (Formatos MP4/WebM)</p>
-                                    </div>
-                                </>
-                            )}
-                            <input 
-                                type="file" 
-                                accept="video/mp4,video/webm" 
-                                onChange={handleVideoUpload}
-                                className="hidden"
-                            />
-                       </label>
-                   </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {renderVideoSlot('A', 'videoUrlA')}
+                    {renderVideoSlot('B', 'videoUrlB')}
+                    {renderVideoSlot('C', 'videoUrlC')}
+                    {renderVideoSlot('D', 'videoUrlD')}
                 </div>
               </div>
 
@@ -498,7 +505,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                                   className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm focus:border-yellow-500 focus:outline-none resize-none"
                                 />
                               </div>
-                              {/* IMAGE URL INPUT REMOVED */}
                            </div>
 
                            {/* Preview Placeholder */}

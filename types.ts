@@ -32,7 +32,13 @@ export interface FleetItem {
 export interface SiteConfig {
   heroTitle: string;
   heroSubtitle: string;
-  videoUrl: string;
+  videoUrl: string; // Legacy/Fallback
+  // New Video Slots for Random Rotation
+  videoUrlA: string;
+  videoUrlB: string;
+  videoUrlC: string;
+  videoUrlD: string;
+  
   whatsappUrl: string;
   // Order of sections
   sectionOrder: string[]; 
