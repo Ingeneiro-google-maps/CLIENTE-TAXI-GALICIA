@@ -130,11 +130,13 @@ const TrafficAssistant: React.FC = () => {
     try {
       const meta = import.meta as any;
       if (meta.env) {
-         return meta.env.VITE_API_KEY || meta.env.VITE_GOOGLE_API_KEY || meta.env.API_KEY;
+         const envKey = meta.env.VITE_API_KEY || meta.env.VITE_GOOGLE_API_KEY || meta.env.API_KEY;
+         if (envKey) return envKey;
       }
     } catch(e) {}
     
-    return undefined;
+    // Priority 3: Hardcoded Fallback (Provided by user to fix missing key error)
+    return "AIzaSyDqERNOeIrhopVUc7Gnw9WrPKCIfmGBS5k";
   };
 
   const startSession = async () => {
@@ -185,7 +187,7 @@ const TrafficAssistant: React.FC = () => {
       // 4. Initialize Gemini Client
       const apiKey = getApiKey();
       if (!apiKey) {
-          throw new Error("API Key no encontrada. Verifica tu configuración (VITE_API_KEY o API_KEY).");
+          throw new Error("API Key no encontrada. Verifica tu configuración.");
       }
 
       const ai = new GoogleGenAI({ apiKey });
