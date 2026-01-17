@@ -42,6 +42,9 @@ export const DEFAULT_CONFIG: SiteConfig = {
   videoUrl: "https://videos.pexels.com/video-files/854671/854671-hd_1920_1080_25fps.mp4",
   whatsappUrl: "https://wa.me/message/IWHB27KLZRBFL1",
   
+  // Default order: Services -> Transfers -> Fleet -> Reservation
+  sectionOrder: ['services', 'transfers', 'fleet', 'reservation'],
+
   // Services Grid
   service1Title: "Camino de Santiago",
   service1Desc: "Servicio especializado para peregrinos. Transporte de mochilas etapa a etapa y traslados de fin de etapa.",

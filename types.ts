@@ -34,6 +34,8 @@ export interface SiteConfig {
   heroSubtitle: string;
   videoUrl: string;
   whatsappUrl: string;
+  // Order of sections
+  sectionOrder: string[]; 
   // Services Grid
   service1Title: string;
   service1Desc: string;

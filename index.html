@@ -52,6 +52,40 @@
         50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
       }
+
+      /* Transfer Section Animations */
+      @keyframes travel-road {
+        0% { left: 5%; opacity: 0; transform: translateY(-50%) scale(0.8); }
+        10% { opacity: 1; transform: translateY(-50%) scale(1); }
+        
+        /* Stop 1: Airport */
+        20% { left: 16%; } 
+        25% { left: 16%; } /* Pause */
+
+        /* Stop 2: Health */
+        50% { left: 50%; }
+        55% { left: 50%; } /* Pause */
+
+        /* Stop 3: Private */
+        80% { left: 83%; }
+        85% { left: 83%; } /* Pause */
+
+        95% { opacity: 1; transform: translateY(-50%) scale(1); }
+        100% { left: 95%; opacity: 0; transform: translateY(-50%) scale(0.8); }
+      }
+
+      .animate-travel {
+        animation: travel-road 8s ease-in-out infinite;
+      }
+
+      @keyframes pulse-yellow {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.4); }
+        50% { box-shadow: 0 0 0 15px rgba(250, 204, 21, 0); }
+      }
+      
+      .animate-pulse-ring {
+        animation: pulse-yellow 2s infinite;
+      }
     </style>
   <script type="importmap">
 {

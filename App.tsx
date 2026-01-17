@@ -12,8 +12,9 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('siteConfig');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Fallback for old configs that might not have fleetItems
+      // Fallback for old configs
       if (!parsed.fleetItems) parsed.fleetItems = DEFAULT_CONFIG.fleetItems;
+      if (!parsed.sectionOrder) parsed.sectionOrder = DEFAULT_CONFIG.sectionOrder;
       return parsed;
     }
     return DEFAULT_CONFIG;
@@ -109,10 +110,387 @@ const App: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  // --- Dynamic Section Rendering ---
+
+  // 1. Services Grid
+  const ServicesSection = (
+    <div key="services" className="bg-black py-20 border-b border-zinc-800">
+      <div className="container mx-auto px-6">
+        <h2 className="text-3xl font-black text-center mb-12 uppercase">Nuestros <span className="text-yellow-400">Servicios</span></h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+            {/* Service 1 */}
+            <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
+              <Backpack className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
+              <h3 className="text-xl font-bold mb-2">{config.service1Title}</h3>
+              <p className="text-gray-400">{config.service1Desc}</p>
+            </div>
+            {/* Service 2 */}
+            <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
+              <Plane className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
+              <h3 className="text-xl font-bold mb-2">{config.service2Title}</h3>
+              <p className="text-gray-400">{config.service2Desc}</p>
+            </div>
+            {/* Service 3 */}
+            <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
+              <Clock className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
+              <h3 className="text-xl font-bold mb-2">{config.service3Title}</h3>
+              <p className="text-gray-400">{config.service3Desc}</p>
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // 2. Transfers (Road Animation)
+  const TransfersSection = (
+    <div key="transfers" className="bg-zinc-900 py-32 border-b border-zinc-800 overflow-hidden">
+        <div className="container mx-auto px-6 relative">
+          <h2 className="text-3xl md:text-4xl font-black text-center mb-24 uppercase text-white relative z-10">
+            {config.transfersTitle}
+          </h2>
+          
+          {/* Desktop Animation Container */}
+          <div className="hidden md:block relative h-[400px]">
+              {/* The Road Line */}
+              <div className="absolute top-[30%] left-0 w-full h-1 bg-zinc-800 -z-0"></div>
+              <div className="absolute top-[30%] left-0 w-full h-1 border-t-2 border-dashed border-yellow-500/30 -z-0"></div>
+
+              {/* The Taxi Animation */}
+              <div className="absolute top-[30%] left-0 z-20 animate-travel">
+                  <div className="bg-yellow-400 text-black p-2 rounded-full shadow-[0_0_20px_rgba(250,204,21,0.6)] transform rotate-12">
+                    <Car size={32} strokeWidth={2.5} />
+                  </div>
+              </div>
+
+              {/* Stations Container */}
+              <div className="relative z-10 grid grid-cols-3 gap-8 h-full">
+                
+                {/* Station 1: Airport */}
+                <div className="flex flex-col items-center">
+                    <div className="w-20 h-20 bg-zinc-900 border-4 border-yellow-400 rounded-full flex items-center justify-center mb-8 shadow-2xl animate-pulse-ring relative z-10">
+                      <Plane size={36} className="text-white" />
+                    </div>
+                    <div className="w-1 h-8 bg-zinc-800 mb-2"></div>
+                    <div className="bg-black/50 backdrop-blur-sm border border-zinc-700 p-6 rounded-2xl text-center w-full max-w-sm hover:border-yellow-400/50 transition-colors duration-500">
+                      <h3 className="text-xl font-bold mb-3 text-yellow-400">{config.transferAirportTitle}</h3>
+                      <p className="text-gray-400 text-sm leading-relaxed">{config.transferAirportDesc}</p>
+                    </div>
+                </div>
+
+                {/* Station 2: Health */}
+                <div className="flex flex-col items-center">
+                    <div className="w-20 h-20 bg-zinc-900 border-4 border-yellow-400 rounded-full flex items-center justify-center mb-8 shadow-2xl animate-pulse-ring relative z-10" style={{animationDelay: '1s'}}>
+                      <HeartPulse size={36} className="text-white" />
+                    </div>
+                    <div className="w-1 h-8 bg-zinc-800 mb-2"></div>
+                    <div className="bg-black/50 backdrop-blur-sm border border-zinc-700 p-6 rounded-2xl text-center w-full max-w-sm hover:border-yellow-400/50 transition-colors duration-500">
+                      <h3 className="text-xl font-bold mb-3 text-yellow-400">{config.transferHealthTitle}</h3>
+                      <p className="text-gray-400 text-sm leading-relaxed">{config.transferHealthDesc}</p>
+                    </div>
+                </div>
+
+                {/* Station 3: Private */}
+                <div className="flex flex-col items-center">
+                    <div className="w-20 h-20 bg-zinc-900 border-4 border-yellow-400 rounded-full flex items-center justify-center mb-8 shadow-2xl animate-pulse-ring relative z-10" style={{animationDelay: '2s'}}>
+                      <ShieldCheck size={36} className="text-white" />
+                    </div>
+                    <div className="w-1 h-8 bg-zinc-800 mb-2"></div>
+                    <div className="bg-black/50 backdrop-blur-sm border border-zinc-700 p-6 rounded-2xl text-center w-full max-w-sm hover:border-yellow-400/50 transition-colors duration-500">
+                      <h3 className="text-xl font-bold mb-3 text-yellow-400">{config.transferPrivateTitle}</h3>
+                      <p className="text-gray-400 text-sm leading-relaxed">{config.transferPrivateDesc}</p>
+                    </div>
+                </div>
+
+              </div>
+          </div>
+
+          {/* Mobile View (Stacked Timeline) */}
+          <div className="md:hidden relative space-y-12 pl-8 border-l-2 border-dashed border-zinc-700 ml-4">
+              {/* Item 1 */}
+              <div className="relative">
+                <div className="absolute -left-[42px] top-0 w-12 h-12 bg-zinc-900 border-2 border-yellow-400 rounded-full flex items-center justify-center z-10">
+                    <Plane size={20} className="text-white" />
+                </div>
+                <div className="bg-black/40 border border-zinc-800 p-6 rounded-xl">
+                    <h3 className="text-xl font-bold mb-2 text-yellow-400">{config.transferAirportTitle}</h3>
+                    <p className="text-gray-400 text-sm">{config.transferAirportDesc}</p>
+                </div>
+              </div>
+
+              {/* Item 2 */}
+              <div className="relative">
+                <div className="absolute -left-[42px] top-0 w-12 h-12 bg-zinc-900 border-2 border-yellow-400 rounded-full flex items-center justify-center z-10">
+                    <HeartPulse size={20} className="text-white" />
+                </div>
+                <div className="bg-black/40 border border-zinc-800 p-6 rounded-xl">
+                    <h3 className="text-xl font-bold mb-2 text-yellow-400">{config.transferHealthTitle}</h3>
+                    <p className="text-gray-400 text-sm">{config.transferHealthDesc}</p>
+                </div>
+              </div>
+
+              {/* Item 3 */}
+              <div className="relative">
+                <div className="absolute -left-[42px] top-0 w-12 h-12 bg-zinc-900 border-2 border-yellow-400 rounded-full flex items-center justify-center z-10">
+                    <ShieldCheck size={20} className="text-white" />
+                </div>
+                <div className="bg-black/40 border border-zinc-800 p-6 rounded-xl">
+                    <h3 className="text-xl font-bold mb-2 text-yellow-400">{config.transferPrivateTitle}</h3>
+                    <p className="text-gray-400 text-sm">{config.transferPrivateDesc}</p>
+                </div>
+              </div>
+          </div>
+        </div>
+    </div>
+  );
+
+  // 3. Fleet Section
+  const FleetSection = (
+    <div key="fleet" className="bg-black py-24 border-b border-zinc-800">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+                <h2 className="text-4xl font-black mb-4 uppercase text-white">
+                  {config.fleetTitle}
+                </h2>
+                <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+                  {config.fleetDesc}
+                </p>
+                <div className="flex justify-center gap-6 mt-8 text-sm text-gray-400">
+                    <div className="flex items-center gap-2"><Wifi className="text-yellow-400" size={16} /> WiFi Gratis</div>
+                    <div className="flex items-center gap-2"><ShieldCheck className="text-yellow-400" size={16} /> Seguro Total</div>
+                    <div className="flex items-center gap-2"><Briefcase className="text-yellow-400" size={16} /> Maletero XL</div>
+                </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {config.fleetItems && config.fleetItems.length > 0 ? (
+                config.fleetItems.map((item) => (
+                  <div key={item.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-yellow-500/50 transition-all group">
+                      <div className="h-56 overflow-hidden relative">
+                        <img 
+                          src={item.imageUrl} 
+                          alt={item.title} 
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://images.pexels.com/photos/116675/pexels-photo-116675.jpeg?auto=compress&cs=tinysrgb&w=800'; // Fallback
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 to-transparent opacity-60"></div>
+                      </div>
+                      <div className="p-8">
+                        <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+                        <p className="text-gray-400 text-sm leading-relaxed">{item.description}</p>
+                      </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center w-full text-gray-500">No hay vehículos configurados.</p>
+              )}
+          </div>
+        </div>
+    </div>
+  );
+
+  // 4. Reservation Section
+  const ReservationSection = (
+    <div key="reservation" id="reservation" className="py-24 bg-neutral-900 relative">
+      <div className="container mx-auto px-6">
+        
+        <div className="flex flex-col lg:flex-row gap-12">
+          
+          {/* Left Column: Form */}
+          <div className="w-full lg:w-1/3">
+            <div className="bg-black border border-zinc-800 p-8 rounded-2xl shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-yellow-600"></div>
+              <h2 className="text-3xl font-bold mb-8 flex items-center gap-2">
+                <Navigation className="text-yellow-400" /> Pedir Taxi
+              </h2>
+              
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Contact Info */}
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Nombre y Apellido</label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
+                      <input
+                        type="text"
+                        name="name"
+                        value={bookingData.name}
+                        onChange={handleInputChange}
+                        placeholder="Ej: Juan Pérez"
+                        className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Teléfono</label>
+                    <div className="relative">
+                        <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={bookingData.phone}
+                        onChange={handleInputChange}
+                        placeholder="Ej: 600 123 456"
+                        className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Origin */}
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Punto de Recogida</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
+                    <select 
+                      name="origin" 
+                      value={bookingData.origin}
+                      onChange={handleInputChange}
+                      className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400 appearance-none"
+                      required
+                    >
+                      <option value="">Selecciona origen</option>
+                      {CITIES.map(city => (
+                        <option key={city.id} value={city.id} disabled={city.id === bookingData.destination}>
+                          {city.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Destination Toggle */}
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-400 uppercase tracking-wider flex justify-between items-center">
+                    Destino
+                    <label className="flex items-center gap-2 text-xs normal-case font-normal text-yellow-400 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={useCustomDest} 
+                        onChange={toggleCustomDest}
+                        className="accent-yellow-400 w-4 h-4" 
+                      />
+                      Dirección exacta / Otra
+                    </label>
+                  </label>
+                  
+                  <div className="relative">
+                    {useCustomDest ? (
+                      <>
+                        <Map className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
+                        <input
+                          type="text"
+                          name="customAddress"
+                          value={bookingData.customAddress}
+                          onChange={handleInputChange}
+                          placeholder="Ej: Rúa do Franco, 15, Santiago..."
+                          className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400"
+                          required
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
+                        <select 
+                          name="destination" 
+                          value={bookingData.destination}
+                          onChange={handleInputChange}
+                          className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400 appearance-none"
+                          required
+                        >
+                          <option value="">Selecciona destino</option>
+                          {CITIES.map(city => (
+                            <option key={city.id} value={city.id} disabled={city.id === bookingData.origin}>
+                              {city.name}
+                            </option>
+                          ))}
+                        </select>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Assistance */}
+                <div className="space-y-3">
+                  <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Opciones</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {ASSISTANCE_OPTIONS.map(opt => (
+                      <div 
+                        key={opt.id}
+                        onClick={() => handleAssistanceToggle(opt.id)}
+                        className={`cursor-pointer px-3 py-2 rounded-lg border text-sm transition-all text-center flex items-center justify-center ${bookingData.assistance.includes(opt.id) ? 'bg-yellow-400 text-black border-yellow-400 font-bold' : 'bg-zinc-900 border-zinc-700 text-gray-400 hover:border-gray-500'}`}
+                      >
+                        {opt.label}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Observaciones</label>
+                  <textarea 
+                    name="notes"
+                    value={bookingData.notes}
+                    onChange={handleInputChange}
+                    placeholder="Ej: Llevo 3 maletas grandes..."
+                    className="w-full bg-zinc-900 border border-zinc-700 text-white p-4 rounded-xl focus:outline-none focus:border-yellow-400 h-24 resize-none"
+                  ></textarea>
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-4 rounded-xl text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-yellow-400/20"
+                >
+                  Confirmar Reserva
+                </button>
+              </form>
+            </div>
+          </div>
+
+          {/* Right Column: Map */}
+          <div className="w-full lg:w-2/3 flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <div>
+                  <h3 className="text-2xl font-bold text-white">Cobertura Galicia</h3>
+                  <p className="text-gray-400">Base central en <span className="text-yellow-400 font-bold">Caldas de Reis</span></p>
+              </div>
+              {simulationActive && (
+                <div className="flex items-center gap-2 text-yellow-400 animate-pulse">
+                  <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                  <span className="text-sm font-bold uppercase">Calculando Ruta en Google Maps</span>
+                </div>
+              )}
+            </div>
+            
+            <GaliciaMap 
+              originId={bookingData.origin} 
+              destinationId={bookingData.destination}
+              isSimulating={simulationActive}
+              isCustomDestination={useCustomDest}
+              customAddress={bookingData.customAddress}
+            />
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+
+  const sectionMap: Record<string, React.ReactNode> = {
+    'services': ServicesSection,
+    'transfers': TransfersSection,
+    'fleet': FleetSection,
+    'reservation': ReservationSection,
+  };
+
   return (
     <div className="min-h-screen bg-neutral-900 text-white selection:bg-yellow-500 selection:text-black overflow-x-hidden">
       
-      {/* --- HERO SECTION --- */}
+      {/* --- HERO SECTION (Always Top) --- */}
       <div className="relative h-screen w-full flex items-center justify-center overflow-hidden">
         {/* Video Background */}
         <div className="absolute inset-0 z-0">
@@ -196,309 +574,10 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* --- SERVICES GRID (Dynamic) --- */}
-      <div className="bg-black py-20 border-b border-zinc-800">
-        <div className="container mx-auto px-6">
-          <h2 className="text-3xl font-black text-center mb-12 uppercase">Nuestros <span className="text-yellow-400">Servicios</span></h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-             
-             {/* Service 1 */}
-             <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
-                <Backpack className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
-                <h3 className="text-xl font-bold mb-2">{config.service1Title}</h3>
-                <p className="text-gray-400">{config.service1Desc}</p>
-             </div>
+      {/* --- DYNAMIC BODY SECTIONS --- */}
+      {config.sectionOrder.map(sectionId => sectionMap[sectionId])}
 
-             {/* Service 2 */}
-             <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
-                <Plane className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
-                <h3 className="text-xl font-bold mb-2">{config.service2Title}</h3>
-                <p className="text-gray-400">{config.service2Desc}</p>
-             </div>
-
-             {/* Service 3 */}
-             <div className="p-8 border border-zinc-800 rounded-2xl bg-zinc-900/50 hover:border-yellow-400/50 transition-colors group">
-                <Clock className="w-12 h-12 text-yellow-400 mb-4 group-hover:scale-110 transition-transform" />
-                <h3 className="text-xl font-bold mb-2">{config.service3Title}</h3>
-                <p className="text-gray-400">{config.service3Desc}</p>
-             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* --- NEW SECTION: DETAILED TRANSFERS --- */}
-      <div className="bg-zinc-900 py-24 border-b border-zinc-800">
-         <div className="container mx-auto px-6">
-            <h2 className="text-3xl font-black text-center mb-12 uppercase text-white">
-              {config.transfersTitle}
-            </h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-               {/* Airport Detail */}
-               <div className="flex flex-col items-center text-center p-6 hover:bg-black/30 rounded-2xl transition-colors">
-                  <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mb-6 text-black">
-                     <Plane size={32} strokeWidth={2.5} />
-                  </div>
-                  <h3 className="text-xl font-bold mb-4 text-white">{config.transferAirportTitle}</h3>
-                  <p className="text-gray-400 leading-relaxed">{config.transferAirportDesc}</p>
-               </div>
-
-               {/* Health Detail */}
-               <div className="flex flex-col items-center text-center p-6 hover:bg-black/30 rounded-2xl transition-colors">
-                  <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mb-6 text-black">
-                     <HeartPulse size={32} strokeWidth={2.5} />
-                  </div>
-                  <h3 className="text-xl font-bold mb-4 text-white">{config.transferHealthTitle}</h3>
-                  <p className="text-gray-400 leading-relaxed">{config.transferHealthDesc}</p>
-               </div>
-
-               {/* Private Detail */}
-               <div className="flex flex-col items-center text-center p-6 hover:bg-black/30 rounded-2xl transition-colors">
-                  <div className="w-16 h-16 bg-yellow-400 rounded-full flex items-center justify-center mb-6 text-black">
-                     <ShieldCheck size={32} strokeWidth={2.5} />
-                  </div>
-                  <h3 className="text-xl font-bold mb-4 text-white">{config.transferPrivateTitle}</h3>
-                  <p className="text-gray-400 leading-relaxed">{config.transferPrivateDesc}</p>
-               </div>
-            </div>
-         </div>
-      </div>
-
-      {/* --- NEW SECTION: FLEET --- */}
-      <div className="bg-black py-24 border-b border-zinc-800">
-         <div className="container mx-auto px-6">
-            <div className="text-center mb-16">
-                 <h2 className="text-4xl font-black mb-4 uppercase text-white">
-                   {config.fleetTitle}
-                 </h2>
-                 <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-                   {config.fleetDesc}
-                 </p>
-                 <div className="flex justify-center gap-6 mt-8 text-sm text-gray-400">
-                     <div className="flex items-center gap-2"><Wifi className="text-yellow-400" size={16} /> WiFi Gratis</div>
-                     <div className="flex items-center gap-2"><ShieldCheck className="text-yellow-400" size={16} /> Seguro Total</div>
-                     <div className="flex items-center gap-2"><Briefcase className="text-yellow-400" size={16} /> Maletero XL</div>
-                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-               {config.fleetItems && config.fleetItems.length > 0 ? (
-                 config.fleetItems.map((item) => (
-                    <div key={item.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-yellow-500/50 transition-all group">
-                       <div className="h-56 overflow-hidden relative">
-                         <img 
-                            src={item.imageUrl} 
-                            alt={item.title} 
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                            onError={(e) => {
-                                (e.target as HTMLImageElement).src = 'https://images.pexels.com/photos/116675/pexels-photo-116675.jpeg?auto=compress&cs=tinysrgb&w=800'; // Fallback
-                            }}
-                         />
-                         <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 to-transparent opacity-60"></div>
-                       </div>
-                       <div className="p-8">
-                          <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
-                          <p className="text-gray-400 text-sm leading-relaxed">{item.description}</p>
-                       </div>
-                    </div>
-                 ))
-               ) : (
-                 <p className="text-center w-full text-gray-500">No hay vehículos configurados.</p>
-               )}
-            </div>
-         </div>
-      </div>
-
-      {/* --- RESERVATION SECTION --- */}
-      <div id="reservation" className="py-24 bg-neutral-900 relative">
-        <div className="container mx-auto px-6">
-          
-          <div className="flex flex-col lg:flex-row gap-12">
-            
-            {/* Left Column: Form */}
-            <div className="w-full lg:w-1/3">
-              <div className="bg-black border border-zinc-800 p-8 rounded-2xl shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-yellow-600"></div>
-                <h2 className="text-3xl font-bold mb-8 flex items-center gap-2">
-                  <Navigation className="text-yellow-400" /> Pedir Taxi
-                </h2>
-                
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  
-                  {/* Contact Info */}
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Nombre y Apellido</label>
-                      <div className="relative">
-                        <User className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
-                        <input
-                          type="text"
-                          name="name"
-                          value={bookingData.name}
-                          onChange={handleInputChange}
-                          placeholder="Ej: Juan Pérez"
-                          className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400"
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Teléfono</label>
-                      <div className="relative">
-                         <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
-                        <input
-                          type="tel"
-                          name="phone"
-                          value={bookingData.phone}
-                          onChange={handleInputChange}
-                          placeholder="Ej: 600 123 456"
-                          className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Origin */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Punto de Recogida</label>
-                    <div className="relative">
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
-                      <select 
-                        name="origin" 
-                        value={bookingData.origin}
-                        onChange={handleInputChange}
-                        className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400 appearance-none"
-                        required
-                      >
-                        <option value="">Selecciona origen</option>
-                        {CITIES.map(city => (
-                          <option key={city.id} value={city.id} disabled={city.id === bookingData.destination}>
-                            {city.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Destination Toggle */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider flex justify-between items-center">
-                      Destino
-                      <label className="flex items-center gap-2 text-xs normal-case font-normal text-yellow-400 cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={useCustomDest} 
-                          onChange={toggleCustomDest}
-                          className="accent-yellow-400 w-4 h-4" 
-                        />
-                        Dirección exacta / Otra
-                      </label>
-                    </label>
-                    
-                    <div className="relative">
-                      {useCustomDest ? (
-                        <>
-                          <Map className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
-                          <input
-                            type="text"
-                            name="customAddress"
-                            value={bookingData.customAddress}
-                            onChange={handleInputChange}
-                            placeholder="Ej: Rúa do Franco, 15, Santiago..."
-                            className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400"
-                            required
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
-                          <select 
-                            name="destination" 
-                            value={bookingData.destination}
-                            onChange={handleInputChange}
-                            className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400 appearance-none"
-                            required
-                          >
-                            <option value="">Selecciona destino</option>
-                            {CITIES.map(city => (
-                              <option key={city.id} value={city.id} disabled={city.id === bookingData.origin}>
-                                {city.name}
-                              </option>
-                            ))}
-                          </select>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Assistance */}
-                  <div className="space-y-3">
-                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Opciones</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {ASSISTANCE_OPTIONS.map(opt => (
-                        <div 
-                          key={opt.id}
-                          onClick={() => handleAssistanceToggle(opt.id)}
-                          className={`cursor-pointer px-3 py-2 rounded-lg border text-sm transition-all text-center flex items-center justify-center ${bookingData.assistance.includes(opt.id) ? 'bg-yellow-400 text-black border-yellow-400 font-bold' : 'bg-zinc-900 border-zinc-700 text-gray-400 hover:border-gray-500'}`}
-                        >
-                          {opt.label}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Notes */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Observaciones</label>
-                    <textarea 
-                      name="notes"
-                      value={bookingData.notes}
-                      onChange={handleInputChange}
-                      placeholder="Ej: Llevo 3 maletas grandes..."
-                      className="w-full bg-zinc-900 border border-zinc-700 text-white p-4 rounded-xl focus:outline-none focus:border-yellow-400 h-24 resize-none"
-                    ></textarea>
-                  </div>
-
-                  <button 
-                    type="submit"
-                    className="w-full bg-yellow-400 hover:bg-yellow-300 text-black font-black py-4 rounded-xl text-lg uppercase tracking-wider transition-all shadow-lg hover:shadow-yellow-400/20"
-                  >
-                    Confirmar Reserva
-                  </button>
-                </form>
-              </div>
-            </div>
-
-            {/* Right Column: Map */}
-            <div className="w-full lg:w-2/3 flex flex-col gap-6">
-              <div className="flex items-center justify-between">
-                <div>
-                   <h3 className="text-2xl font-bold text-white">Cobertura Galicia</h3>
-                   <p className="text-gray-400">Base central en <span className="text-yellow-400 font-bold">Caldas de Reis</span></p>
-                </div>
-                {simulationActive && (
-                  <div className="flex items-center gap-2 text-yellow-400 animate-pulse">
-                    <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
-                    <span className="text-sm font-bold uppercase">Calculando Ruta en Google Maps</span>
-                  </div>
-                )}
-              </div>
-              
-              <GaliciaMap 
-                originId={bookingData.origin} 
-                destinationId={bookingData.destination}
-                isSimulating={simulationActive}
-                isCustomDestination={useCustomDest}
-                customAddress={bookingData.customAddress}
-              />
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      {/* --- FOOTER --- */}
+      {/* --- FOOTER (Always Bottom) --- */}
       <footer className="bg-black border-t border-zinc-800 py-12">
         <div className="container mx-auto px-6 text-center">
           <h2 className="text-2xl font-black text-white mb-2">TAXI <span className="text-yellow-400">VERO CALDAS</span></h2>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2 } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 
 interface AdminPanelProps {
@@ -9,6 +9,13 @@ interface AdminPanelProps {
   currentConfig: SiteConfig;
   onSave: (config: SiteConfig) => void;
 }
+
+const SECTION_LABELS: Record<string, string> = {
+  'services': 'Servicios (Cuadrícula)',
+  'transfers': 'Traslados Animados (Línea de tiempo)',
+  'fleet': 'Flota de Vehículos',
+  'reservation': 'Formulario de Reserva y Mapa',
+};
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig, onSave }) => {
   const [formData, setFormData] = useState<SiteConfig>(currentConfig);
@@ -57,6 +64,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     setFormData(prev => ({ ...prev, fleetItems: newItems }));
   };
 
+  // Section Ordering Functions
+  const moveSection = (index: number, direction: 'up' | 'down') => {
+    const newOrder = [...(formData.sectionOrder || [])];
+    if (direction === 'up') {
+      if (index === 0) return;
+      [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    } else {
+      if (index === newOrder.length - 1) return;
+      [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    }
+    setFormData(prev => ({ ...prev, sectionOrder: newOrder }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
@@ -85,9 +105,43 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
 
         {/* Scrollable Form Content */}
         <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
-          <form id="admin-form" onSubmit={handleSubmit} className="space-y-8">
+          <form id="admin-form" onSubmit={handleSubmit} className="space-y-12">
             
-            {/* General Settings */}
+            {/* 1. Section Ordering (High Priority) */}
+            <div className="space-y-4">
+              <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider border-b border-zinc-800 pb-2 flex items-center gap-2">
+                <Layout size={16} /> Orden de Secciones
+              </h3>
+              <p className="text-xs text-zinc-500 mb-4">Reordena las secciones de la página principal.</p>
+              
+              <div className="space-y-2">
+                {(formData.sectionOrder || []).map((sectionId, index) => (
+                  <div key={sectionId} className="flex items-center justify-between bg-zinc-950 p-3 rounded-lg border border-zinc-800 hover:border-yellow-500/50 transition-colors">
+                    <span className="text-sm font-bold text-white">{SECTION_LABELS[sectionId] || sectionId}</span>
+                    <div className="flex gap-2">
+                      <button 
+                        type="button" 
+                        onClick={() => moveSection(index, 'up')}
+                        disabled={index === 0}
+                        className={`p-1 rounded ${index === 0 ? 'text-zinc-700' : 'text-zinc-400 hover:text-yellow-400 hover:bg-zinc-800'}`}
+                      >
+                        <ArrowUp size={18} />
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => moveSection(index, 'down')}
+                        disabled={index === (formData.sectionOrder?.length || 0) - 1}
+                        className={`p-1 rounded ${index === (formData.sectionOrder?.length || 0) - 1 ? 'text-zinc-700' : 'text-zinc-400 hover:text-yellow-400 hover:bg-zinc-800'}`}
+                      >
+                        <ArrowDown size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. General Settings */}
             <div className="space-y-4">
               <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider border-b border-zinc-800 pb-2">Configuración General</h3>
               
@@ -139,7 +193,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
               </div>
             </div>
 
-            {/* Fleet Section (Text) */}
+            {/* 3. Fleet Section (Text) */}
             <div className="space-y-4">
                <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider border-b border-zinc-800 pb-2">Sección: Flota (Textos)</h3>
                <div className="space-y-2">
@@ -164,7 +218,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                 </div>
             </div>
 
-            {/* Fleet Items (Dynamic List) */}
+            {/* 4. Fleet Items (Dynamic List) */}
             <div className="space-y-4">
                <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
                  <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider">Gestión de Vehículos (Imágenes)</h3>
@@ -244,7 +298,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                </div>
             </div>
 
-            {/* Transfers Detail Section */}
+            {/* 5. Transfers Detail Section */}
              <div className="space-y-4">
               <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider border-b border-zinc-800 pb-2">Sección: Tipos de Traslados</h3>
                <div className="space-y-2">
@@ -331,7 +385,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
               </div>
             </div>
 
-            {/* Services Grid (Old) */}
+            {/* 6. Services Grid (Old) */}
             <div className="space-y-4">
               <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider border-b border-zinc-800 pb-2">Servicios (Grid Superior)</h3>
               
