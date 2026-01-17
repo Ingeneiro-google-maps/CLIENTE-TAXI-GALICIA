@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Taxi Galicia | Reserva Profesional</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Montserrat', sans-serif;
+        background-color: #0f0f0f;
+        color: #ffffff;
+      }
+      .taxi-yellow {
+        color: #F7C948;
+      }
+      .bg-taxi-yellow {
+        background-color: #F7C948;
+      }
+      .border-taxi-yellow {
+        border-color: #F7C948;
+      }
+      /* Custom Animation for Hero Taxi */
+      @keyframes drive {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100vw); }
+      }
+      .animate-drive {
+        animation: drive 8s linear infinite;
+      }
+      
+      /* Map Path Animation */
+      .path-line {
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+        animation: dash 3s ease-in-out forwards;
+      }
+      
+      @keyframes dash {
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+      
+      .floating {
+        animation: float 3s ease-in-out infinite;
+      }
+      
+      @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+        100% { transform: translateY(0px); }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.3/client",
+    "react-dom": "https://esm.sh/react-dom@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+  </body>
+</html>
