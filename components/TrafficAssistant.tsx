@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, MicOff, X, Activity, Radio, Volume2, AlertTriangle, WifiOff, CheckCircle2 } from 'lucide-react';
+import { Mic, MicOff, X, Activity, Radio, Volume2, AlertTriangle, WifiOff, CheckCircle2, RefreshCw } from 'lucide-react';
 
 // --- Audio Helpers (Encoding/Decoding) ---
 
@@ -89,7 +89,7 @@ const TrafficAssistant: React.FC = () => {
   const [isActive, setIsActive] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<React.ReactNode | null>(null);
   const [statusMessage, setStatusMessage] = useState('Desconectado');
   const [showSuccessBadge, setShowSuccessBadge] = useState(false);
 
@@ -307,11 +307,38 @@ const TrafficAssistant: React.FC = () => {
             if (e.code === 1008) {
                // Policy Violation - almost always domain restriction
                const domain = window.location.hostname;
-               setError(`BLOQUEO DE SEGURIDAD (1008): Tu API Key no permite peticiones desde "${domain}". Ve a Google Cloud Console > Credentials y añade este dominio o quita las restricciones.`);
+               console.error("GOOGLE API BLOCKED ORIGIN:", domain);
+               
+               setError(
+                 <div className="text-left space-y-2">
+                    <p className="font-bold border-b border-red-400 pb-1">BLOQUEO DE SEGURIDAD (1008)</p>
+                    <p>Google Cloud ha rechazado la conexión desde:</p>
+                    <code className="block bg-black/30 p-1 rounded text-yellow-300 select-all">{domain}</code>
+                    
+                    <p className="font-bold mt-2">SOLUCIÓN:</p>
+                    <ol className="list-decimal pl-4 space-y-1">
+                      <li>Ve a Google Cloud Console {'>'} Credentials.</li>
+                      <li>Edita tu API Key.</li>
+                      <li>
+                        En "Website restrictions", asegúrate de tener:
+                        <br/><span className="text-green-300 select-all">https://{domain}</span>
+                        <br/>
+                        {domain.startsWith('www.') 
+                            ? <span className="text-green-300 select-all">https://{domain.replace('www.', '')}</span> 
+                            : <span className="text-green-300 select-all">https://www.{domain}</span>
+                        }
+                      </li>
+                      <li>
+                         Recomendado: Añade también comodines:
+                         <br/><span className="text-yellow-300 select-all">*taxicaldascheve.es/*</span>
+                      </li>
+                      <li><strong>Espera 5-10 minutos</strong> a que se aplique.</li>
+                    </ol>
+                 </div>
+               );
             } else if (e.code === 1000) {
                setStatusMessage('Desconectado');
             } else if (e.code === 1006) {
-               // Abnormal closure - can be network or generic API error
                setError('Conexión perdida (1006). Puede ser un firewall o la API Key inválida.');
             } else {
                setError(`Desconexión inesperada (Código ${e.code}).`);
@@ -353,6 +380,16 @@ const TrafficAssistant: React.FC = () => {
     }
   };
 
+  const handleRetry = () => {
+    cleanupAudio();
+    setError(null); 
+    // Small delay to ensure clean state
+    setTimeout(() => {
+        setIsActive(true);
+        startSession();
+    }, 300);
+  };
+
   return (
     <>
       <button
@@ -390,13 +427,13 @@ const TrafficAssistant: React.FC = () => {
             </div>
 
             {error ? (
-              <div className="flex flex-col items-center justify-center p-3 bg-red-900/40 rounded-lg border border-red-500/50 w-full animate-in fade-in zoom-in z-20">
-                 <AlertTriangle className="text-red-500 mb-2" size={28} />
-                 <p className="text-red-200 text-[10px] text-center font-mono break-words w-full leading-tight mb-3">
+              <div className="flex flex-col items-center justify-center p-3 bg-red-900/80 rounded-lg border border-red-500/50 w-full animate-in fade-in zoom-in z-20 overflow-y-auto max-h-[300px]">
+                 <AlertTriangle className="text-red-400 mb-2 shrink-0" size={28} />
+                 <div className="text-red-100 text-[10px] font-mono leading-tight mb-3 w-full">
                    {error}
-                 </p>
-                 <button onClick={() => { setError(null); toggleAssistant(); }} className="bg-red-600 hover:bg-red-500 text-white text-[10px] px-4 py-2 rounded-full font-bold transition-colors">
-                    REINICIAR SISTEMA
+                 </div>
+                 <button onClick={handleRetry} className="bg-white text-red-900 hover:bg-zinc-200 text-[10px] px-4 py-2 rounded-full font-bold transition-colors flex items-center gap-2 shadow-lg">
+                    <RefreshCw size={12} /> REINTENTAR CONEXIÓN
                  </button>
               </div>
             ) : (
