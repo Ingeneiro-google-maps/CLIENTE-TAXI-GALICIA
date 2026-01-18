@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CITIES, ASSISTANCE_OPTIONS, DEFAULT_CONFIG } from './constants';
 import { BookingData, BookingConfirmation, SiteConfig } from './types';
 import GaliciaMap from './components/GaliciaMap';
@@ -56,20 +56,35 @@ const App: React.FC = () => {
     return () => { isMounted = false; };
   }, []);
 
-  // Window Resize Listener for Video Calculations
+  // Window Resize Listener for Video Calculations (DEBOUNCED for Mobile Performance)
   useEffect(() => {
+    let timeoutId: any = null;
+
     const handleResize = () => {
-        setWindowDimensions({
-            width: window.innerWidth,
-            height: window.innerHeight
-        });
+        // Clear previous timeout to debounce
+        if (timeoutId) clearTimeout(timeoutId);
+        
+        // Wait 150ms before recalculating to avoid jitter on mobile scroll
+        timeoutId = setTimeout(() => {
+            setWindowDimensions({
+                width: window.innerWidth,
+                height: window.innerHeight
+            });
+        }, 150);
     };
 
     window.addEventListener('resize', handleResize);
-    // Initial call
-    handleResize();
+    
+    // Initial call (immediate)
+    setWindowDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight
+    });
 
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+        window.removeEventListener('resize', handleResize);
+        if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   // Determine Random Video on Config Load

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, MicOff, X, Activity, Radio, Volume2, AlertTriangle, WifiOff } from 'lucide-react';
+import { Mic, MicOff, X, Activity, Radio, Volume2, AlertTriangle, WifiOff, CheckCircle2 } from 'lucide-react';
 
 // --- Audio Helpers (Encoding/Decoding) ---
 
@@ -91,6 +91,7 @@ const TrafficAssistant: React.FC = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState('Desconectado');
+  const [showSuccessBadge, setShowSuccessBadge] = useState(false);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -158,6 +159,7 @@ const TrafficAssistant: React.FC = () => {
 
   const startSession = async () => {
     setError(null);
+    setShowSuccessBadge(false);
     setStatusMessage('Iniciando sistemas...');
 
     const apiKey = getApiKey();
@@ -213,6 +215,8 @@ const TrafficAssistant: React.FC = () => {
             console.log('Gemini Live Connected');
             setIsConnected(true);
             setStatusMessage('En línea. Escuchando...');
+            setShowSuccessBadge(true);
+            setTimeout(() => setShowSuccessBadge(false), 3000); // Show success badge for 3s
             
             if (!inputAudioContextRef.current || !stream) return;
             
@@ -405,6 +409,12 @@ const TrafficAssistant: React.FC = () => {
                     </>
                   )}
                   
+                  {showSuccessBadge && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-green-500 text-black text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 z-30 animate-in fade-in slide-in-from-top-4">
+                        <CheckCircle2 size={12} /> Conexión Segura
+                    </div>
+                  )}
+
                   <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${isSpeaking ? 'bg-yellow-400 scale-110 shadow-[0_0_30px_rgba(250,204,21,0.6)]' : 'bg-zinc-800 border border-zinc-700'}`}>
                     {isSpeaking ? (
                       <Volume2 size={32} className="text-black animate-bounce" />
