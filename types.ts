@@ -40,6 +40,10 @@ export interface SiteConfig {
   videoUrlD: string;
   
   whatsappUrl: string;
+  
+  // New: General Settings
+  enableAssistant: boolean; // Toggle for AI Assistant
+
   // Order of sections
   sectionOrder: string[]; 
   // Services Grid
@@ -61,4 +65,8 @@ export interface SiteConfig {
   fleetTitle: string;
   fleetDesc: string;
   fleetItems: FleetItem[];
+  
+  // New: Footer Settings
+  footerTitle: string;
+  footerText: string;
 }

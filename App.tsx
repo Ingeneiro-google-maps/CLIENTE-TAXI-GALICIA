@@ -652,8 +652,8 @@ const App: React.FC = () => {
       {/* Install Prompt for Mobile/PWA */}
       <InstallPWA />
 
-      {/* --- TRAFFIC ASSISTANT (NEW) --- */}
-      <TrafficAssistant />
+      {/* --- TRAFFIC ASSISTANT (CONDITIONAL RENDER) --- */}
+      {config.enableAssistant && <TrafficAssistant />}
 
       {/* --- HERO SECTION (Always Top) --- */}
       <div className="relative h-screen w-full flex items-center justify-center overflow-hidden">
@@ -766,8 +766,8 @@ const App: React.FC = () => {
       {/* --- FOOTER (Always Bottom) --- */}
       <footer className="bg-black border-t border-zinc-800 py-12">
         <div className="container mx-auto px-6 text-center">
-          <h2 className="text-2xl font-black text-white mb-2">TAXI <span className="text-yellow-400">VERO CALDAS</span></h2>
-          <p className="text-zinc-500 mb-6 max-w-md mx-auto">Servicio profesional de taxi en Caldas de Reis. Conectamos el Camino de Santiago y aeropuertos con comodidad y seguridad.</p>
+          <h2 className="text-2xl font-black text-white mb-2 uppercase">{config.footerTitle}</h2>
+          <p className="text-zinc-500 mb-6 max-w-md mx-auto">{config.footerText}</p>
           
           <div className="flex justify-center gap-6 mb-8 text-gray-400 text-sm">
              <span className="hover:text-yellow-400 transition-colors cursor-pointer">Caldas de Reis</span>

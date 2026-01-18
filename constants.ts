@@ -47,9 +47,11 @@ export const DEFAULT_CONFIG: SiteConfig = {
   videoUrlC: "",
   videoUrlD: "",
 
-  // Ensures all new deployments use this link by default
   whatsappUrl: "https://wa.me/message/IWHB27KLZRBFL1",
   
+  // General
+  enableAssistant: true,
+
   // Default order: Services -> Transfers -> Fleet -> Reservation
   sectionOrder: ['services', 'transfers', 'fleet', 'reservation'],
 
@@ -93,6 +95,10 @@ export const DEFAULT_CONFIG: SiteConfig = {
   transferHealthDesc: "Ante una situación imprevista, puedes confiar en nuestro servicio de taxi. Te llevamos hasta el hospital más cercano o hasta tu centro de salud habitual, para que el traslado no te suponga un problema.",
   transferPrivateTitle: "Traslados privados",
   transferPrivateDesc: "Para cualquier tipo de traslado en taxi en Caldas de Reis y alrededores, puedes contactar con Taxi Vero Hermida. Te proporcionamos un servicio como taxista completo, llevándote a cualquier destino.",
+
+  // Footer
+  footerTitle: "TAXI VERO CALDAS",
+  footerText: "Servicio profesional de taxi en Caldas de Reis. Conectamos el Camino de Santiago y aeropuertos con comodidad y seguridad.",
 };
 
 // Deprecated: These are now loaded from SiteConfig, but kept for fallback or legacy ref

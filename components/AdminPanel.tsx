@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -58,6 +58,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+     const { name, checked } = e.target;
+     setFormData(prev => ({ ...prev, [name]: checked }));
   };
 
   const handleDbUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -346,6 +351,37 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                   <p className={`text-[10px] font-mono ${statusUI.color}`}>{dbMessage || 'Introduce URL para conectar.'}</p>
                </div>
             </div>
+
+             {/* General Settings & Footer */}
+             <div className="space-y-4 border border-zinc-800 p-4 rounded-xl bg-zinc-950/50">
+                <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
+                   <Type size={16} /> Configuración General
+                </h3>
+                
+                {/* Assistant Toggle */}
+                <div className="flex items-center justify-between p-3 bg-black border border-zinc-800 rounded-lg">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-red-500 p-2 rounded text-white"><Mic size={18} /></div>
+                        <div>
+                            <p className="font-bold text-sm text-white">Asistente de Voz (IA)</p>
+                            <p className="text-[10px] text-zinc-500">Activa el botón de micrófono flotante</p>
+                        </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="enableAssistant" checked={formData.enableAssistant !== false} onChange={handleToggle} className="sr-only peer" />
+                        <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                    </label>
+                </div>
+
+                {/* Footer Settings */}
+                <div className="space-y-3 pt-2">
+                    <label className="text-xs font-bold text-zinc-400 block">Título Pie de Página</label>
+                    <input type="text" name="footerTitle" value={formData.footerTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                    
+                    <label className="text-xs font-bold text-zinc-400 block">Texto Pie de Página</label>
+                    <textarea name="footerText" value={formData.footerText} onChange={handleChange} rows={2} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none resize-none" />
+                </div>
+             </div>
 
             {/* Video Section with Warnings */}
             <div className="space-y-3 border-2 border-dashed border-zinc-800 p-4 rounded-xl">
