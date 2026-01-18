@@ -1,13 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, MicOff, X, Activity, Radio, Volume2, AlertCircle } from 'lucide-react';
+import { Mic, MicOff, X, Activity, Radio, Volume2, AlertCircle, AlertTriangle } from 'lucide-react';
 
 // --- Audio Helpers (Encoding/Decoding) ---
 
-/**
- * Robust downsampling to 16kHz.
- * Uses a safe averaging method to prevent aliasing and handle ratio mismatches.
- */
 function downsampleBuffer(buffer: Float32Array, inputRate: number, outputRate: number = 16000): Float32Array {
   if (inputRate === outputRate) return buffer;
   
@@ -17,16 +13,13 @@ function downsampleBuffer(buffer: Float32Array, inputRate: number, outputRate: n
   
   for (let i = 0; i < newLength; i++) {
     const nextOffsetBuffer = Math.round((i + 1) * sampleRateRatio);
-    // Use floor for the start to ensure we don't miss samples
     const offsetBuffer = Math.round(i * sampleRateRatio);
     
     let accum = 0, count = 0;
-    // Iterate through the corresponding input samples
     for (let j = offsetBuffer; j < nextOffsetBuffer && j < buffer.length; j++) {
       accum += buffer[j];
       count++;
     }
-    // If we didn't find any samples (ratio < 1, upsampling case - shouldn't happen here), just take the nearest
     if (count === 0 && offsetBuffer < buffer.length) {
        accum = buffer[offsetBuffer];
        count = 1;
@@ -39,10 +32,8 @@ function downsampleBuffer(buffer: Float32Array, inputRate: number, outputRate: n
 
 function createBlob(data: Float32Array): { data: string; mimeType: string } {
   const l = data.length;
-  // Convert Float32 to Int16 PCM
   const int16 = new Int16Array(l);
   for (let i = 0; i < l; i++) {
-    // Clamp values
     let s = Math.max(-1, Math.min(1, data[i]));
     int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
   }
@@ -99,12 +90,11 @@ const TrafficAssistant: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState('Desconectado');
 
-  // Refs for audio handling
   const audioContextRef = useRef<AudioContext | null>(null);
   const inputAudioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
-  const sessionRef = useRef<any>(null); // To store the active session
+  const sessionRef = useRef<any>(null); 
   const nextStartTimeRef = useRef<number>(0);
   const sourceNodesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
 
@@ -124,13 +114,11 @@ const TrafficAssistant: React.FC = () => {
   `;
 
   const cleanupAudio = () => {
-    // Stop all playing sources
     sourceNodesRef.current.forEach(node => {
       try { node.stop(); } catch (e) {}
     });
     sourceNodesRef.current.clear();
 
-    // Close contexts
     if (audioContextRef.current) {
       audioContextRef.current.close();
       audioContextRef.current = null;
@@ -148,98 +136,92 @@ const TrafficAssistant: React.FC = () => {
       scriptProcessorRef.current = null;
     }
     
-    // Clear global reference to prevent GC issues
     if ((window as any)._trafficScriptProcessor) {
       (window as any)._trafficScriptProcessor = null;
     }
 
-    // Close Gemini session if method exists
     sessionRef.current = null;
-    
     setIsConnected(false);
     setIsSpeaking(false);
     nextStartTimeRef.current = 0;
   };
 
   const getApiKey = () => {
-    let key = "";
-    
-    // 1. Try Environment Variables (Vite/Next/Standard)
+    // 1. Try process.env first (Standard/Node/Webpack)
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      return process.env.API_KEY;
+    }
+
+    // 2. Try Vite/Vercel Import Meta (Most likely for this project)
     try {
       // @ts-ignore
-      const env = import.meta.env || {};
-      // @ts-ignore
-      const processEnv = typeof process !== 'undefined' ? process.env : {};
+      if (typeof import.meta !== 'undefined' && import.meta.env) {
+         // @ts-ignore
+         if (import.meta.env.VITE_API_KEY) return import.meta.env.VITE_API_KEY;
+         // @ts-ignore
+         if (import.meta.env.VITE_GOOGLE_API_KEY) return import.meta.env.VITE_GOOGLE_API_KEY;
+      }
+    } catch (e) {}
 
-      key = env.VITE_API_KEY || 
-            env.VITE_GOOGLE_API_KEY || 
-            processEnv.NEXT_PUBLIC_API_KEY || 
-            processEnv.REACT_APP_API_KEY || 
-            processEnv.API_KEY || 
-            "";
-    } catch(e) {
-       console.warn("Env read error", e);
+    // 3. Fallbacks
+    if (typeof process !== 'undefined' && process.env) {
+        if (process.env.NEXT_PUBLIC_API_KEY) return process.env.NEXT_PUBLIC_API_KEY;
+        if (process.env.REACT_APP_API_KEY) return process.env.REACT_APP_API_KEY;
     }
 
-    // 2. Fallback Hardcoded (ONLY for Development/Demo)
-    // NOTE: This key might be restricted to localhost. If you are deploying to Vercel,
-    // you MUST set VITE_API_KEY in Vercel Project Settings.
-    if (!key) {
-      key = "AIzaSyDqERNOeIrhopVUc7Gnw9WrPKCIfmGBS5k";
-      console.warn("Using Hardcoded Fallback API Key. This may fail on Vercel due to domain restrictions.");
-    }
-
-    return key;
+    return "";
   };
 
   const startSession = async () => {
     setError(null);
     setStatusMessage('Iniciando sistemas...');
 
+    // 0. Check API Key immediately
+    const apiKey = getApiKey();
+    if (!apiKey) {
+        const isVercel = window.location.hostname.includes('vercel.app');
+        const msg = isVercel
+            ? "Falta 'VITE_API_KEY' en Vercel. Ve a Settings > Environment Variables y añádela."
+            : "Error: No se encontró API Key. Configura VITE_API_KEY en tu archivo .env";
+        
+        setError(msg);
+        console.error("TRAFFIC ASSISTANT ERROR:", msg);
+        return;
+    }
+
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-       setError('Error: Navegador no compatible o sin HTTPS.');
+       setError('Error: Navegador no compatible o falta HTTPS.');
        return;
     }
 
     try {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       
-      // --- INPUT CONTEXT (MICROPHONE) ---
-      // IMPORTANT: Do NOT force a sampleRate here. Let the browser/OS decide.
-      // Forcing 16000 often fails or causes glitches on iOS/Android/Vercel deployments.
-      // We will manually downsample later.
-      inputAudioContextRef.current = new AudioContextClass();
-      
-      // --- OUTPUT CONTEXT (SPEAKER) ---
-      audioContextRef.current = new AudioContextClass();
+      // 1. Initialize Contexts immediately to capture User Gesture
+      const inputCtx = new AudioContextClass();
+      const outputCtx = new AudioContextClass();
 
-      // Resume contexts (needed for mobile autoplay policies)
-      if (inputAudioContextRef.current.state === 'suspended') {
-        await inputAudioContextRef.current.resume();
-      }
-      if (audioContextRef.current.state === 'suspended') {
-        await audioContextRef.current.resume();
-      }
+      // 2. Resume immediately (Critical for mobile)
+      await Promise.all([inputCtx.resume(), outputCtx.resume()]);
+
+      inputAudioContextRef.current = inputCtx;
+      audioContextRef.current = outputCtx;
 
       setStatusMessage('Conectando con satélite...');
 
-      // Get Microphone Stream
+      // 3. Get Microphone Stream
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          channelCount: 1, // Force Mono
+          channelCount: 1, 
         } 
       });
       mediaStreamRef.current = stream;
 
-      const apiKey = getApiKey();
-      if (!apiKey) throw new Error("API Key no encontrada.");
-
       const ai = new GoogleGenAI({ apiKey });
       
-      // Connect to Live API
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         config: {
@@ -258,22 +240,15 @@ const TrafficAssistant: React.FC = () => {
             
             if (!inputAudioContextRef.current || !stream) return;
             
-            // Get actual system sample rate (e.g., 48000 or 44100)
             const currentSampleRate = inputAudioContextRef.current.sampleRate;
-            console.log("System Input Rate:", currentSampleRate);
-
             const source = inputAudioContextRef.current.createMediaStreamSource(stream);
-            // 4096 is a safe buffer size.
             const processor = inputAudioContextRef.current.createScriptProcessor(4096, 1, 1);
             
-            // Attach to window to prevent Garbage Collection
             scriptProcessorRef.current = processor;
             (window as any)._trafficScriptProcessor = processor;
 
             processor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
-              
-              // ALWAYS Downsample to 16000 for Gemini
               const downsampledData = downsampleBuffer(inputData, currentSampleRate, 16000);
               const pcmBlob = createBlob(downsampledData);
               
@@ -281,15 +256,14 @@ const TrafficAssistant: React.FC = () => {
                 sessionRef.current = session;
                 session.sendRealtimeInput({ media: pcmBlob });
               }).catch(err => {
-                  console.warn("Frame send error (ignoring):", err);
+                 // Silent catch
               });
             };
 
             source.connect(processor);
             processor.connect(inputAudioContextRef.current.destination);
 
-            // --- AUTO-START TRIGGER ---
-            // Send silence to wake up model, BUT wait slightly to ensure connection is stable.
+            // Wake up signal
             setTimeout(() => {
                 const silenceFrame = new Float32Array(16000); 
                 const silenceBlob = createBlob(silenceFrame);
@@ -312,7 +286,7 @@ const TrafficAssistant: React.FC = () => {
                 const audioBuffer = await decodeAudioData(
                   decode(base64Audio),
                   ctx,
-                  24000 // Gemini output is always 24kHz PCM
+                  24000
                 );
 
                 const source = ctx.createBufferSource();
@@ -346,18 +320,9 @@ const TrafficAssistant: React.FC = () => {
             console.log('Gemini Live Disconnected', e);
             cleanupAudio();
             setStatusMessage('Desconectado');
-            
-            // Only show error if it wasn't a clean close (1000)
             if (e && e.code !== 1000) {
-                // Check if it's the specific hardcoded key
-                const currentKey = getApiKey();
-                const isFallback = currentKey.startsWith("AIzaSyDqERNOeIrhopVUc7Gnw9WrPKCIfmGBS5k");
-                
-                if (isFallback) {
-                   setError('Error: API Key de prueba bloqueada en este dominio. Añade VITE_API_KEY en Vercel.');
-                } else {
-                   setError(`Desconexión inesperada (Code ${e.code}). Revisa tu API Key.`);
-                }
+                 // Common error for missing key or bad permissions
+                 setError(`Desconexión (Code ${e.code}). Revisa API Key y Permisos.`);
             }
           },
           onerror: (err) => {
@@ -367,7 +332,7 @@ const TrafficAssistant: React.FC = () => {
             if (errStr.includes('permission') || errStr.includes('denied')) {
                 setError('Permiso de micrófono denegado.');
             } else if (errStr.includes('403') || errStr.includes('key')) {
-                setError('Error 403: API Key inválida o bloqueada.');
+                setError('Error 403: API Key inválida o restringida por dominio.');
             } else {
                 setError('Error de conexión con el servidor.');
             }
@@ -379,11 +344,11 @@ const TrafficAssistant: React.FC = () => {
     } catch (err: any) {
       console.error('Initialization Error:', err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setError('Permiso denegado. Habilita el micrófono.');
+          setError('Permiso de micrófono denegado.');
       } else if (err.name === 'NotFoundError') {
           setError('No se encontró micrófono.');
       } else {
-          setError(err.message || 'Error desconocido al iniciar audio.');
+          setError(err.message || 'Error desconocido.');
       }
       cleanupAudio();
     }
@@ -401,7 +366,6 @@ const TrafficAssistant: React.FC = () => {
 
   return (
     <>
-      {/* Floating Action Button */}
       <button
         onClick={toggleAssistant}
         className={`fixed bottom-6 left-6 z-50 p-4 rounded-full shadow-2xl transition-all duration-300 flex items-center gap-2 group ${
@@ -415,11 +379,9 @@ const TrafficAssistant: React.FC = () => {
         {!isActive && <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 whitespace-nowrap font-bold">Asistente Tráfico</span>}
       </button>
 
-      {/* Assistant Interface Modal */}
       {isActive && (
         <div className="fixed bottom-24 left-6 z-50 w-80 bg-zinc-900/95 backdrop-blur-md border-2 border-yellow-400 rounded-2xl shadow-[0_0_30px_rgba(250,204,21,0.2)] overflow-hidden flex flex-col animate-fade-in-up">
           
-          {/* Header */}
           <div className="bg-yellow-400 p-3 flex items-center justify-between">
             <h3 className="font-black text-black text-sm uppercase flex items-center gap-2">
               <Activity size={16} /> Radar de Tráfico
@@ -432,24 +394,23 @@ const TrafficAssistant: React.FC = () => {
             </div>
           </div>
 
-          {/* Visualizer */}
           <div className="p-6 flex flex-col items-center justify-center min-h-[160px] relative">
             
-            {/* Background Grid */}
             <div className="absolute inset-0 opacity-10" 
                  style={{backgroundImage: 'radial-gradient(#F7C948 1px, transparent 1px)', backgroundSize: '10px 10px'}}>
             </div>
 
             {error ? (
-              <div className="flex flex-col items-center justify-center p-2 bg-red-900/30 rounded-lg border border-red-500/50 w-full">
-                 <AlertCircle className="text-red-500 mb-2" size={24} />
-                 <p className="text-red-400 text-xs text-center font-bold break-words w-full">{error}</p>
-                 <button onClick={() => setError(null)} className="mt-2 text-[10px] text-zinc-400 underline">Reintentar</button>
+              <div className="flex flex-col items-center justify-center p-3 bg-red-900/40 rounded-lg border border-red-500/50 w-full animate-in fade-in zoom-in">
+                 <AlertTriangle className="text-red-500 mb-2" size={28} />
+                 <p className="text-red-400 text-xs text-center font-bold break-words w-full leading-tight">{error}</p>
+                 <button onClick={() => { setError(null); toggleAssistant(); }} className="mt-3 bg-red-900/50 text-white text-[10px] px-3 py-1 rounded hover:bg-red-800 transition-colors">
+                    Cerrar e Intentar de nuevo
+                 </button>
               </div>
             ) : (
               <>
                 <div className="relative">
-                  {/* Outer Rings */}
                   {isConnected && (
                     <>
                       <div className="absolute inset-0 rounded-full border border-yellow-400/30 animate-ping" style={{animationDuration: '2s'}}></div>
@@ -457,7 +418,6 @@ const TrafficAssistant: React.FC = () => {
                     </>
                   )}
                   
-                  {/* Central Icon */}
                   <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${isSpeaking ? 'bg-yellow-400 scale-110 shadow-[0_0_30px_rgba(250,204,21,0.6)]' : 'bg-zinc-800 border border-zinc-700'}`}>
                     {isSpeaking ? (
                       <Volume2 size={32} className="text-black animate-bounce" />
@@ -478,11 +438,10 @@ const TrafficAssistant: React.FC = () => {
             )}
           </div>
 
-          {/* Instructions */}
           <div className="bg-black p-3 text-[10px] text-zinc-500 border-t border-zinc-800 text-center">
             <p className="mb-2">"¿Hay accidentes en la AP-9?" <br/> "Verifica tráfico a Santiago"</p>
             <p className="text-[9px] text-zinc-700 mt-2 border-t border-zinc-900 pt-1">
-              This system was developed by Engineer Orlando Galdames.
+              System developed by Engineer Orlando Galdames.
             </p>
           </div>
         </div>
