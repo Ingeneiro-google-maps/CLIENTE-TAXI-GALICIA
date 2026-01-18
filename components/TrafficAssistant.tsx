@@ -4,11 +4,44 @@ import { Mic, MicOff, X, Activity, Radio, Volume2, AlertCircle } from 'lucide-re
 
 // --- Audio Helpers (Encoding/Decoding) ---
 
+/**
+ * Downsamples audio buffer to target sample rate (16kHz for Gemini).
+ * Essential for mobile/production where AudioContext often forces 44.1kHz or 48kHz.
+ */
+function downsampleBuffer(buffer: Float32Array, inputRate: number, outputRate: number = 16000): Float32Array {
+  if (inputRate === outputRate) return buffer;
+  if (inputRate < outputRate) return buffer; // Should not happen usually
+
+  const sampleRateRatio = inputRate / outputRate;
+  const newLength = Math.round(buffer.length / sampleRateRatio);
+  const result = new Float32Array(newLength);
+  
+  let offsetResult = 0;
+  let offsetBuffer = 0;
+  
+  while (offsetResult < result.length) {
+    const nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
+    // Use simple averaging to prevent aliasing
+    let accum = 0, count = 0;
+    for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+      accum += buffer[i];
+      count++;
+    }
+    result[offsetResult] = count > 0 ? accum / count : 0;
+    offsetResult++;
+    offsetBuffer = nextOffsetBuffer;
+  }
+  return result;
+}
+
 function createBlob(data: Float32Array): { data: string; mimeType: string } {
   const l = data.length;
+  // Convert Float32 to Int16 PCM
   const int16 = new Int16Array(l);
   for (let i = 0; i < l; i++) {
-    int16[i] = data[i] * 32768;
+    // Clamp values
+    let s = Math.max(-1, Math.min(1, data[i]));
+    int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
   }
   
   let binary = '';
@@ -113,7 +146,7 @@ const TrafficAssistant: React.FC = () => {
       scriptProcessorRef.current = null;
     }
     
-    // Clear global reference to prevent GC issues but allow cleanup
+    // Clear global reference to prevent GC issues
     if ((window as any)._trafficScriptProcessor) {
       (window as any)._trafficScriptProcessor = null;
     }
@@ -128,7 +161,6 @@ const TrafficAssistant: React.FC = () => {
 
   const getApiKey = () => {
     let key = "";
-
     // 1. Try Vite Env (Most likely for Vercel/Frontend)
     try {
       const meta = import.meta as any;
@@ -140,7 +172,6 @@ const TrafficAssistant: React.FC = () => {
     // 2. Try Process Env (Node/Fallback)
     if (!key) {
       try {
-         // Safe access to process
          if (typeof process !== 'undefined' && process.env) {
            key = process.env.API_KEY || process.env.REACT_APP_API_KEY || "";
          }
@@ -159,37 +190,38 @@ const TrafficAssistant: React.FC = () => {
     setError(null);
     setStatusMessage('Iniciando sistemas...');
 
-    // 1. Browser Capability Check
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
        setError('Error: Navegador no compatible o sin HTTPS.');
        return;
     }
 
     try {
-      // 2. Initialize Audio Contexts immediately (User Interaction Context)
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       
-      // Initialize Input Context (16kHz for Gemini)
+      // --- INPUT CONTEXT (MICROPHONE) ---
+      // We try to ask for 16kHz, but if the browser/hardware rejects it, we accept default.
+      // We will handle resampling manually later.
       try {
         if (!inputAudioContextRef.current) {
           inputAudioContextRef.current = new AudioContextClass({ sampleRate: 16000 });
         }
       } catch (e) {
-        console.warn("16kHz Context not supported, falling back to default");
-        inputAudioContextRef.current = new AudioContextClass();
+        console.warn("16kHz Input Context not supported, falling back to default");
+        inputAudioContextRef.current = new AudioContextClass(); // Default system rate
       }
       
-      // Initialize Output Context (24kHz for Gemini)
+      // --- OUTPUT CONTEXT (SPEAKER) ---
+      // Gemini sends 24kHz. Browser will resample 24k -> System Rate automatically on output.
       try {
         if (!audioContextRef.current) {
            audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
         }
       } catch (e) {
-        console.warn("24kHz Context not supported, falling back to default");
+        console.warn("24kHz Output Context not supported, falling back to default");
         audioContextRef.current = new AudioContextClass();
       }
 
-      // iOS/Mobile Compatibility: Force resume audio context
+      // Resume contexts (needed for iOS/Chrome autoplay policies)
       if (inputAudioContextRef.current.state === 'suspended') {
         await inputAudioContextRef.current.resume();
       }
@@ -199,25 +231,23 @@ const TrafficAssistant: React.FC = () => {
 
       setStatusMessage('Conectando con satélite...');
 
-      // 3. Get Microphone Access
+      // Get Microphone Stream
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true
+          autoGainControl: true,
+          channelCount: 1,
         } 
       });
       mediaStreamRef.current = stream;
 
-      // 4. Initialize Gemini Client
       const apiKey = getApiKey();
-      if (!apiKey) {
-          throw new Error("API Key no encontrada. Verifica configuración.");
-      }
+      if (!apiKey) throw new Error("API Key no encontrada.");
 
       const ai = new GoogleGenAI({ apiKey });
       
-      // 5. Connect to Live API
+      // Connect to Live API
       const sessionPromise = ai.live.connect({
         model: 'gemini-2.5-flash-native-audio-preview-12-2025',
         config: {
@@ -234,21 +264,27 @@ const TrafficAssistant: React.FC = () => {
             setIsConnected(true);
             setStatusMessage('En línea. Escuchando...');
             
-            // Setup Microphone Stream Processing
             if (!inputAudioContextRef.current || !stream) return;
             
+            const currentSampleRate = inputAudioContextRef.current.sampleRate;
+            console.log("Input Sample Rate:", currentSampleRate);
+
             const source = inputAudioContextRef.current.createMediaStreamSource(stream);
+            // 4096 buffer size provides a balance between latency and processor overhead
             const processor = inputAudioContextRef.current.createScriptProcessor(4096, 1, 1);
             
-            // CRITICAL: Attach to window to prevent Garbage Collection in some browsers/environments
+            // Attach to window to prevent Garbage Collection
             scriptProcessorRef.current = processor;
             (window as any)._trafficScriptProcessor = processor;
 
             processor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
-              const pcmBlob = createBlob(inputData);
               
-              // Send audio chunk to Gemini
+              // DOWNSAMPLE if necessary (e.g. System is 48kHz, Gemini needs 16kHz)
+              const downsampledData = downsampleBuffer(inputData, currentSampleRate, 16000);
+              
+              const pcmBlob = createBlob(downsampledData);
+              
               sessionPromise.then(session => {
                 sessionRef.current = session;
                 session.sendRealtimeInput({ media: pcmBlob });
@@ -261,14 +297,15 @@ const TrafficAssistant: React.FC = () => {
             processor.connect(inputAudioContextRef.current.destination);
 
             // --- AUTO-START TRIGGER ---
-            const silenceFrame = new Float32Array(16000); // 1 sec at 16k
+            // Send 1 second of "silence" to force the model to wake up
+            // Use 16000 empty samples because that matches our 16kHz mimetype
+            const silenceFrame = new Float32Array(16000); 
             const silenceBlob = createBlob(silenceFrame);
             sessionPromise.then(session => {
                session.sendRealtimeInput({ media: silenceBlob });
             });
           },
           onmessage: async (msg: LiveServerMessage) => {
-            // Handle Audio Output from Gemini
             const base64Audio = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
             
             if (base64Audio && audioContextRef.current) {
@@ -276,13 +313,13 @@ const TrafficAssistant: React.FC = () => {
               setStatusMessage('Analizando tráfico...');
               
               try {
-                // Ensure timing is correct
                 const ctx = audioContextRef.current;
                 nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
                 
                 const audioBuffer = await decodeAudioData(
                   decode(base64Audio),
-                  ctx
+                  ctx,
+                  24000 // Gemini output is always 24kHz PCM
                 );
 
                 const source = ctx.createBufferSource();
@@ -305,7 +342,6 @@ const TrafficAssistant: React.FC = () => {
               }
             }
 
-            // Handle interruptions
             if (msg.serverContent?.interrupted) {
               sourceNodesRef.current.forEach(node => node.stop());
               sourceNodesRef.current.clear();
@@ -318,11 +354,9 @@ const TrafficAssistant: React.FC = () => {
             cleanupAudio();
             setStatusMessage('Desconectado');
             
-            // Enhanced Logic for Production Disconnects
-            // Code 1000 is normal closure. Anything else (or undefined) is likely an error/drop.
+            // Code 1000 is normal closure.
             if (e && e.code !== 1000) {
-                // If we haven't already set a specific permission error, set a generic disconnect error
-                setError((prev) => prev || 'Desconexión inesperada. (Posible bloqueo de API Key en este dominio)');
+                setError((prev) => prev || `Desconexión (Code: ${e.code}). Verifica API Key en Vercel.`);
             }
           },
           onerror: (err) => {
@@ -332,7 +366,7 @@ const TrafficAssistant: React.FC = () => {
             if (errStr.includes('permission') || errStr.includes('denied')) {
                 setError('Permiso de micrófono denegado.');
             } else if (errStr.includes('403') || errStr.includes('key')) {
-                setError('Error de Llave API (403). Dominio no permitido en GCloud.');
+                setError('Error 403: API Key bloqueada para este dominio.');
             } else {
                 const msg = err instanceof Error ? err.message : String(err);
                 setError(`Error de conexión: ${msg}`);
@@ -344,7 +378,6 @@ const TrafficAssistant: React.FC = () => {
 
     } catch (err: any) {
       console.error('Initialization Error:', err);
-      // Detailed error handling
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
           setError('Permiso denegado. Habilita el micrófono.');
       } else if (err.name === 'NotFoundError') {
