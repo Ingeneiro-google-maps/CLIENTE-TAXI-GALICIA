@@ -15,6 +15,12 @@ const App: React.FC = () => {
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [activeVideoUrl, setActiveVideoUrl] = useState('');
+  
+  // State for Screen Dimensions (Video Math Logic)
+  const [windowDimensions, setWindowDimensions] = useState({ 
+    width: typeof window !== 'undefined' ? window.innerWidth : 1920, 
+    height: typeof window !== 'undefined' ? window.innerHeight : 1080 
+  });
 
   // Load Config from Neon Database on Mount
   useEffect(() => {
@@ -48,6 +54,22 @@ const App: React.FC = () => {
     loadConfig();
 
     return () => { isMounted = false; };
+  }, []);
+
+  // Window Resize Listener for Video Calculations
+  useEffect(() => {
+    const handleResize = () => {
+        setWindowDimensions({
+            width: window.innerWidth,
+            height: window.innerHeight
+        });
+    };
+
+    window.addEventListener('resize', handleResize);
+    // Initial call
+    handleResize();
+
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   // Determine Random Video on Config Load
@@ -577,9 +599,37 @@ const App: React.FC = () => {
     );
   }
 
-  // Determine video type variables for styling
+  // --- ROBUST MATHEMATICAL VIDEO SIZING ---
+  // Determine if YouTube
   const isYouTube = activeVideoUrl && (activeVideoUrl.includes('youtube.com') || activeVideoUrl.includes('youtu.be'));
   const isShorts = activeVideoUrl && activeVideoUrl.includes('/shorts/');
+
+  // Logic:
+  // 1. Determine Target Ratio (Video AR)
+  const targetRatio = isShorts ? (9 / 16) : (16 / 9); // 0.5625 vs 1.7778
+  
+  // 2. Determine Screen Ratio
+  const screenRatio = windowDimensions.width / windowDimensions.height;
+
+  // 3. Calculate Perfect Cover Dimensions
+  let iframeW, iframeH;
+
+  if (screenRatio > targetRatio) {
+      // Screen is WIDER than video (e.g., Desktop vs Vertical Video)
+      // Fit Width, Overflow Height
+      iframeW = windowDimensions.width;
+      iframeH = windowDimensions.width / targetRatio;
+  } else {
+      // Screen is TALLER than video (e.g., Mobile vs Landscape Video)
+      // Fit Height, Overflow Width
+      iframeH = windowDimensions.height;
+      iframeW = windowDimensions.height * targetRatio;
+  }
+
+  // 4. Safety Buffer (Scale up 15% to prevent rounding errors/hairline borders)
+  const SAFETY_SCALE = 1.15;
+  iframeW *= SAFETY_SCALE;
+  iframeH *= SAFETY_SCALE;
 
   return (
     <div className="min-h-screen bg-neutral-900 text-white selection:bg-yellow-500 selection:text-black overflow-x-hidden">
@@ -597,20 +647,21 @@ const App: React.FC = () => {
           <div className="absolute inset-0 bg-black/60 z-10"></div>
           {/* Key added to force reload when URL changes via admin panel */}
           {isYouTube ? (
-             <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
+             <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none flex items-center justify-center">
                  <iframe 
-                   src={`https://www.youtube.com/embed/${activeVideoUrl.split('v=')[1]?.split('&')[0] || activeVideoUrl.split('/').pop()}?autoplay=1&mute=1&controls=0&loop=1&playlist=${activeVideoUrl.split('v=')[1]?.split('&')[0] || activeVideoUrl.split('/').pop()}&playsinline=1&showinfo=0&rel=0`}
+                   src={`https://www.youtube.com/embed/${activeVideoUrl.split('v=')[1]?.split('&')[0] || activeVideoUrl.split('/').pop()}?autoplay=1&mute=1&controls=0&loop=1&playlist=${activeVideoUrl.split('v=')[1]?.split('&')[0] || activeVideoUrl.split('/').pop()}&playsinline=1&showinfo=0&rel=0&iv_load_policy=3`}
                    title="Background Video"
                    frameBorder="0"
                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                   className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none object-cover ${
-                       isShorts 
-                       ? 'w-[100vw] h-[177.77vw] min-h-[100vh] min-w-[56.25vh]' // Shorts Logic: Ensure full coverage on vertical/horizontal
-                       : 'w-[177.77vh] h-[56.25vw] min-w-[100vw] min-h-[100vh]' // Landscape Logic: Standard 16:9 coverage
-                   }`}
+                   // Applying calculated dimensions directly
                    style={{
-                       // Extra scaling to prevent single-pixel edge lines
-                       transform: 'translate(-50%, -50%) scale(1.1)'
+                       width: `${iframeW}px`,
+                       height: `${iframeH}px`,
+                       position: 'absolute',
+                       top: '50%',
+                       left: '50%',
+                       transform: 'translate(-50%, -50%)',
+                       pointerEvents: 'none'
                    }}
                  />
              </div>
