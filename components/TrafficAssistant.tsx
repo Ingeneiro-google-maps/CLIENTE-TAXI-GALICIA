@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, X, Activity, Radio, Volume2, AlertTriangle, CheckCircle2, RefreshCw, PowerOff } from 'lucide-react';
+import { Mic, X, Activity, Radio, Volume2, AlertTriangle, CheckCircle2, RefreshCw, PowerOff, Loader2 } from 'lucide-react';
 
 // --- Audio Helpers (Encoding/Decoding) ---
 
@@ -84,13 +84,12 @@ async function decodeAudioData(
 // --- Component ---
 
 const TrafficAssistant: React.FC = () => {
+  // State Machine: 'idle' | 'connecting' | 'connected' | 'error'
+  const [status, setStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
   const [isActive, setIsActive] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState('Desconectado');
-  const [showSuccessBadge, setShowSuccessBadge] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [statusText, setStatusText] = useState('Desconectado');
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const inputAudioContextRef = useRef<AudioContext | null>(null);
@@ -99,41 +98,32 @@ const TrafficAssistant: React.FC = () => {
   const sessionRef = useRef<any>(null); 
   const nextStartTimeRef = useRef<number>(0);
   const sourceNodesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
-  const activeStateRef = useRef(false);
-  const retryTimeoutRef = useRef<any>(null);
 
-  const MAX_RETRIES = 3; // Límite de intentos para evitar bucle infinito
-
+  // Force close on unmount
   useEffect(() => {
-    activeStateRef.current = isActive;
-    // Cleanup timeout on unmount or uncheck
-    if (!isActive && retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-        retryTimeoutRef.current = null;
-    }
-  }, [isActive]);
+    return () => {
+      cleanupAudio();
+    };
+  }, []);
 
   const SYSTEM_INSTRUCTION = `
-    Eres el "Asistente de Viaje y Tráfico" de Taxi Vero Caldas, operando en Galicia, España.
+    Eres el "Asistente de Viaje y Tráfico" de Taxi Vero Caldas.
+    Tu objetivo es dar información de tráfico, clima y carreteras en Galicia.
     
-    INSTRUCCIÓN DE INICIO:
-    - Tu primera respuesta SIEMPRE debe ser el saludo.
-    - SALUDA EXACTAMENTE ASÍ: "Hola, soy tu asistente de viaje. Puedes aquí consultar tráficos, accidentes y notificarme en la vida de la carretera."
-
-    COMPORTAMIENTO:
-    1. Después del saludo, espera a que el usuario hable.
-    2. Si el usuario te pregunta por el tráfico, pregúntale: "¿En qué ruta quieres verificar si hay tráfico o algún accidente?"
-    3. Cuando el usuario te diga una ruta (ej: "de Pontevedra a Vigo", "AP-9", "A-55"), USA LA HERRAMIENTA GOOGLE SEARCH INMEDIATAMENTE.
-    4. Busca específicamente: "tráfico DGT Galicia [ruta]", "accidentes hoy [ruta]", "twitter tráfico galicia [ruta]".
-    5. Informa de manera profesional y concisa sobre incidentes, retenciones, clima o si la vía está despejada.
+    1. AL INICIAR: Di "Hola, soy tu asistente de viaje. ¿Qué ruta comprobamos hoy?".
+    2. ESPERA la respuesta del usuario.
+    3. USA SIEMPRE la herramienta 'googleSearch' para buscar datos reales de la DGT o accidentes.
+    4. Sé breve y profesional.
   `;
 
   const cleanupAudio = () => {
+    // Stop all playing audio
     sourceNodesRef.current.forEach(node => {
       try { node.stop(); } catch (e) {}
     });
     sourceNodesRef.current.clear();
 
+    // Close Contexts
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
     }
@@ -144,11 +134,13 @@ const TrafficAssistant: React.FC = () => {
     }
     inputAudioContextRef.current = null;
 
+    // Stop Mic Stream
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
       mediaStreamRef.current = null;
     }
     
+    // Disconnect Processor
     if (scriptProcessorRef.current) {
       scriptProcessorRef.current.disconnect();
       scriptProcessorRef.current = null;
@@ -159,50 +151,47 @@ const TrafficAssistant: React.FC = () => {
     }
 
     sessionRef.current = null;
-    setIsConnected(false);
     setIsSpeaking(false);
     nextStartTimeRef.current = 0;
   };
 
   const getApiKey = () => {
-    return process.env.API_KEY || "AIzaSyCYZm2lUlqvPfz34PHocEmqYKiLnX0__pU";
+    // Priority: Env Var -> Hardcoded Fallback
+    const key = process.env.API_KEY || "AIzaSyCYZm2lUlqvPfz34PHocEmqYKiLnX0__pU";
+    return key;
   };
 
   const startSession = async () => {
-    // Si ya superamos los intentos, no seguimos (Rompe el bucle)
-    if (retryCount >= MAX_RETRIES) {
-        setStatusMessage('Servicio no disponible.');
-        setError('No se pudo establecer conexión segura.');
-        setIsConnected(false);
-        return;
-    }
-
-    setError(null);
-    setShowSuccessBadge(false);
-    setStatusMessage(retryCount > 0 ? `Reconectando (Intento ${retryCount}/${MAX_RETRIES})...` : 'Iniciando sistemas...');
+    cleanupAudio(); // Ensure clean slate
+    setErrorMessage(null);
+    setStatus('connecting');
+    setStatusText('Iniciando sistemas...');
 
     const apiKey = getApiKey();
     
     if (!apiKey) {
-        setError("Error: Falta API Key");
+        setErrorMessage("Error: Falta API Key");
+        setStatus('error');
         return;
     }
 
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-         throw new Error('Sin acceso al micrófono.');
+         throw new Error('Tu navegador no soporta acceso al micrófono.');
       }
 
+      // Audio Contexts
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       const inputCtx = new AudioContextClass();
       const outputCtx = new AudioContextClass();
 
+      // Resume immediately (requires user gesture, which calls this function)
       await Promise.all([inputCtx.resume(), outputCtx.resume()]);
 
       inputAudioContextRef.current = inputCtx;
       audioContextRef.current = outputCtx;
 
-      setStatusMessage('Sintonizando satélite...');
+      setStatusText('Accediendo al micrófono...');
 
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
@@ -214,6 +203,8 @@ const TrafficAssistant: React.FC = () => {
         } 
       });
       mediaStreamRef.current = stream;
+
+      setStatusText('Conectando con satélite...');
 
       const ai = new GoogleGenAI({ apiKey });
       
@@ -229,12 +220,9 @@ const TrafficAssistant: React.FC = () => {
         },
         callbacks: {
           onopen: () => {
-            console.log('Gemini Connected');
-            setIsConnected(true);
-            setRetryCount(0); // Éxito: reiniciamos contador
-            setStatusMessage('En línea. Escuchando...');
-            setShowSuccessBadge(true);
-            setTimeout(() => setShowSuccessBadge(false), 3000);
+            console.log('Gemini Connected Successfully');
+            setStatus('connected');
+            setStatusText('En línea. Escuchando...');
             
             if (!inputAudioContextRef.current || !stream) return;
             
@@ -259,7 +247,7 @@ const TrafficAssistant: React.FC = () => {
             source.connect(processor);
             processor.connect(inputAudioContextRef.current.destination);
 
-            // Wake up
+            // Send initial silence to wake up the model
             setTimeout(() => {
                 try {
                   const silenceFrame = new Float32Array(16000); 
@@ -275,7 +263,7 @@ const TrafficAssistant: React.FC = () => {
             
             if (base64Audio && audioContextRef.current) {
               setIsSpeaking(true);
-              setStatusMessage('Analizando tráfico...');
+              setStatusText('Analizando tráfico...');
               try {
                 const ctx = audioContextRef.current;
                 nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
@@ -287,13 +275,15 @@ const TrafficAssistant: React.FC = () => {
                   sourceNodesRef.current.delete(source);
                   if (sourceNodesRef.current.size === 0) {
                     setIsSpeaking(false);
-                    setStatusMessage('Esperando instrucciones...');
+                    setStatusText('Esperando instrucciones...');
                   }
                 };
                 source.start(nextStartTimeRef.current);
                 sourceNodesRef.current.add(source);
                 nextStartTimeRef.current += audioBuffer.duration;
-              } catch (err) {}
+              } catch (err) {
+                 console.error("Decode error", err);
+              }
             }
 
             if (msg.serverContent?.interrupted) {
@@ -304,79 +294,56 @@ const TrafficAssistant: React.FC = () => {
             }
           },
           onclose: (e: CloseEvent) => {
-            console.log('Gemini Close:', e.code);
+            console.log('Gemini Connection Closed:', e.code, e.reason);
             cleanupAudio();
+            setStatus('error');
             
-            // SI ES ERROR 1008 (Policy), NO REINTENTAR AUTOMÁTICAMENTE PARA EVITAR BUCLE
             if (e.code === 1008) {
-                setStatusMessage('Acceso Denegado (Dominio no autorizado)');
-                setError('El dominio web no está autorizado en Google Cloud.');
-                setRetryCount(MAX_RETRIES); // Forzamos límite
-                return;
-            }
-
-            if (activeStateRef.current) {
-                const newRetry = retryCount + 1;
-                
-                if (newRetry < MAX_RETRIES) {
-                    setStatusMessage('Señal inestable. Reconectando...');
-                    setRetryCount(newRetry);
-                    
-                    // Delay exponencial: 2s, 4s, 6s...
-                    const delay = 2000 * newRetry; 
-                    retryTimeoutRef.current = setTimeout(() => {
-                        if (activeStateRef.current) startSession();
-                    }, delay);
-                } else {
-                    setStatusMessage('Conexión perdida.');
-                    setError('No se pudo conectar con el servidor.');
-                }
+                setErrorMessage('Error de Dominio: Verifica Google Console.');
+            } else {
+                setErrorMessage('Conexión perdida con el servidor.');
             }
           },
           onerror: (err) => {
-            console.error('Gemini Error:', err);
-            // No mostramos UI de error aquí, dejamos que onclose maneje el ciclo
+            console.error('Gemini Error Event:', err);
+            // We let onclose handle the state transition
           }
         }
       });
 
     } catch (err: any) {
-      console.error('Init Error:', err);
+      console.error('Initialization Error:', err);
+      setStatus('error');
       if (err.name === 'NotAllowedError') {
-          setError('Micrófono bloqueado.');
+          setErrorMessage('Acceso al micrófono denegado.');
       } else {
-         setError('Error de inicialización.');
+         setErrorMessage('No se pudo iniciar el servicio.');
       }
       cleanupAudio();
     }
   };
 
-  const toggleAssistant = () => {
+  const handleToggle = () => {
     if (isActive) {
+      // Turn Off
       setIsActive(false);
-      activeStateRef.current = false;
+      setStatus('idle');
       cleanupAudio();
-      setRetryCount(0);
-      setError(null);
-      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
     } else {
+      // Turn On
       setIsActive(true);
-      activeStateRef.current = true;
-      setRetryCount(0); // Reset manual
       startSession();
     }
   };
 
-  const handleManualRetry = () => {
-      setRetryCount(0);
-      setError(null);
+  const handleRetry = () => {
       startSession();
   };
 
   return (
     <>
       <button
-        onClick={toggleAssistant}
+        onClick={handleToggle}
         className={`fixed bottom-6 left-6 z-50 p-4 rounded-full shadow-2xl transition-all duration-300 flex items-center gap-2 group ${
           isActive 
             ? 'bg-red-600 text-white animate-pulse' 
@@ -391,73 +358,68 @@ const TrafficAssistant: React.FC = () => {
       {isActive && (
         <div className="fixed bottom-24 left-6 z-50 w-80 bg-zinc-900/95 backdrop-blur-md border-2 border-yellow-400 rounded-2xl shadow-[0_0_30px_rgba(250,204,21,0.2)] overflow-hidden flex flex-col animate-fade-in-up">
           
+          {/* Header */}
           <div className="bg-yellow-400 p-3 flex items-center justify-between">
             <h3 className="font-black text-black text-sm uppercase flex items-center gap-2">
               <Activity size={16} /> Radar de Tráfico
             </h3>
             <div className="flex items-center gap-1">
-              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-600 animate-pulse' : 'bg-red-500'}`}></span>
+              <span className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-green-600 animate-pulse' : 'bg-red-500'}`}></span>
               <span className="text-[10px] font-bold text-black uppercase">
-                {isConnected ? 'LIVE' : 'OFF'}
+                {status === 'connected' ? 'LIVE' : 'OFF'}
               </span>
             </div>
           </div>
 
+          {/* Body */}
           <div className="p-6 flex flex-col items-center justify-center min-h-[160px] relative">
             
-            {/* Background Grid */}
             <div className="absolute inset-0 opacity-10" 
                  style={{backgroundImage: 'radial-gradient(#F7C948 1px, transparent 1px)', backgroundSize: '10px 10px'}}>
             </div>
 
-            {error ? (
+            {status === 'error' ? (
               <div className="flex flex-col items-center justify-center p-3 bg-red-900/80 rounded-lg border border-red-500/50 w-full animate-in fade-in zoom-in z-20">
                  <PowerOff className="text-red-400 mb-2 shrink-0" size={24} />
                  <p className="text-red-100 text-xs font-bold text-center mb-3 leading-tight">
-                   {error}
+                   {errorMessage || "Error desconocido"}
                  </p>
-                 <button onClick={handleManualRetry} className="bg-white text-red-900 hover:bg-zinc-200 text-[10px] px-4 py-2 rounded-full font-bold transition-colors flex items-center gap-2 shadow-lg">
-                    <RefreshCw size={12} /> REINTENTAR AHORA
+                 <button onClick={handleRetry} className="bg-white text-red-900 hover:bg-zinc-200 text-[10px] px-4 py-2 rounded-full font-bold transition-colors flex items-center gap-2 shadow-lg">
+                    <RefreshCw size={12} /> REINTENTAR MANUALMENTE
                  </button>
+              </div>
+            ) : status === 'connecting' ? (
+              <div className="flex flex-col items-center justify-center gap-3">
+                 <Loader2 className="animate-spin text-yellow-400" size={32} />
+                 <p className="text-xs text-yellow-400 font-mono animate-pulse">{statusText}</p>
               </div>
             ) : (
               <>
                 <div className="relative">
-                  {isConnected && (
+                  {status === 'connected' && (
                     <>
                       <div className="absolute inset-0 rounded-full border border-yellow-400/30 animate-ping" style={{animationDuration: '2s'}}></div>
-                      <div className="absolute inset-0 rounded-full border border-yellow-400/20 animate-ping" style={{animationDuration: '3s', animationDelay: '0.5s'}}></div>
                     </>
                   )}
                   
-                  {showSuccessBadge && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-green-500 text-black text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 z-30 animate-in fade-in slide-in-from-top-4">
-                        <CheckCircle2 size={12} /> Conectado
-                    </div>
-                  )}
-
                   <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 ${isSpeaking ? 'bg-yellow-400 scale-110 shadow-[0_0_30px_rgba(250,204,21,0.6)]' : 'bg-zinc-800 border border-zinc-700'}`}>
                     {isSpeaking ? (
                       <Volume2 size={32} className="text-black animate-bounce" />
                     ) : (
-                      <Mic size={32} className={`${isConnected ? 'text-yellow-400' : 'text-zinc-500'} ${!isConnected && !error ? 'animate-pulse' : ''}`} />
+                      <Mic size={32} className={`${status === 'connected' ? 'text-yellow-400' : 'text-zinc-500'} ${status === 'connected' ? 'animate-pulse' : ''}`} />
                     )}
                   </div>
                 </div>
 
                 <p className="mt-6 text-yellow-400 font-mono text-xs text-center uppercase tracking-widest animate-pulse">
-                  {statusMessage}
+                  {statusText}
                 </p>
-                
-                {isSpeaking && (
-                   <p className="text-[10px] text-zinc-500 mt-1">Recibiendo datos de DGT...</p>
-                )}
               </>
             )}
           </div>
 
           <div className="bg-black p-3 text-[10px] text-zinc-500 border-t border-zinc-800 text-center">
-            <p className="mb-2">"¿Hay accidentes en la AP-9?" <br/> "Verifica tráfico a Santiago"</p>
+            <p><strong>Truco:</strong> Di "Tráfico en AP-9" o "Accidentes cerca de mí"</p>
           </div>
         </div>
       )}
