@@ -2,121 +2,90 @@ import { neon } from '@neondatabase/serverless';
 import { SiteConfig } from '../types';
 import { DEFAULT_CONFIG } from '../constants';
 
-// URL proporcionada por el usuario
+// URL proporcionada por el usuario (HARDCODED BACKUP)
 const PROVIDED_DB_URL = "postgresql://neondb_owner:npg_6fHhjT9mnJPL@ep-withered-sun-ahefjqm9-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require";
 
-// Helper to safely get env var without crashing
-// PRIORITY: 
-// 1. LocalStorage (User entered in Admin Panel)
-// 2. Environment Variable (.env)
-// 3. Provided Default (Hardcoded)
+// Helper to safely get env var
 export const getDbUrl = () => {
   if (typeof window !== 'undefined') {
     const localUrl = localStorage.getItem('taxi_db_url');
-    if (localUrl && localUrl.trim() !== '') {
+    if (localUrl && localUrl.trim().startsWith('postgres')) {
       return localUrl;
     }
   }
-
-  try {
-    // Check if import.meta.env exists (Vite)
-    const meta = import.meta as any;
-    if (typeof meta !== 'undefined' && meta.env && meta.env.VITE_DATABASE_URL) {
-      return meta.env.VITE_DATABASE_URL;
-    }
-  } catch (e) {
-    console.warn('Could not access environment variables');
-  }
-  
-  // Return the user provided URL if nothing else is set
   return PROVIDED_DB_URL;
 };
 
 export const dbService = {
   /**
-   * Tests the connection and initializes the table if needed.
+   * Tests the connection
    */
   testConnection: async (connectionString: string): Promise<{ success: boolean; message: string; stage: 'connecting' | 'creating' | 'ready' | 'error' }> => {
-    if (!connectionString || connectionString.trim() === '') {
-      return { success: false, message: 'URL no proporcionada', stage: 'error' };
+    if (!connectionString || !connectionString.startsWith('postgres')) {
+      return { success: false, message: 'URL inválida', stage: 'error' };
     }
 
-    const sql = neon(connectionString);
-    
     try {
-      // 1. Test basic connectivity (Connecting phase)
+      const sql = neon(connectionString);
+      // Simple ping
       await sql`SELECT 1`;
-    } catch (e: any) {
-      return { success: false, message: `No se pudo conectar: ${e.message}`, stage: 'error' };
-    }
-
-    try {
-      // 2. Ensure table exists (Creating phase)
-      // We check if table exists first to report status correctly if needed, 
-      // but simpler is just to run CREATE IF NOT EXISTS
-      await sql`CREATE TABLE IF NOT EXISTS app_settings (id INTEGER PRIMARY KEY, config JSONB)`;
       
-      // Verify access by trying to read (even if empty)
-      await sql`SELECT id FROM app_settings LIMIT 1`;
+      // Try creating table if not exists (Transactionless compatible)
+      try {
+          await sql`CREATE TABLE IF NOT EXISTS app_settings (id INTEGER PRIMARY KEY, config JSONB)`;
+      } catch (e) {
+          console.warn("Table create warning:", e);
+      }
 
-      return { success: true, message: 'Conexión Perfecta. Base de datos sincronizada.', stage: 'ready' };
+      return { success: true, message: 'Conexión Exitosa', stage: 'ready' };
     } catch (e: any) {
-       return { success: false, message: `Error al verificar tablas: ${e.message}`, stage: 'error' };
+      return { success: false, message: `Error: ${e.message}`, stage: 'error' };
     }
   },
 
   /**
-   * Fetches the site configuration from the database.
-   * If no config exists or error occurs, returns the DEFAULT_CONFIG.
+   * Fetches config
    */
   getConfig: async (): Promise<SiteConfig> => {
     try {
       const url = getDbUrl();
-      
-      if (!url || typeof url !== 'string' || url.trim() === '') {
-        console.log('Database URL not configured, using local defaults.');
-        return DEFAULT_CONFIG;
-      }
-
       const sql = neon(url);
       
-      // We assume row ID 1 holds the active config
-      // Wrap in try/catch specifically for the query in case table doesn't exist yet
-      try {
-        const response = await sql`SELECT config FROM app_settings WHERE id = 1`;
-        if (response && response.length > 0 && response[0].config && Object.keys(response[0].config).length > 0) {
-          return { ...DEFAULT_CONFIG, ...response[0].config };
-        }
-      } catch (e) {
-        console.log('Table might not exist yet or empty, returning defaults');
+      const response = await sql`SELECT config FROM app_settings WHERE id = 1`;
+      
+      if (response && response.length > 0) {
+          const loadedConfig = response[0].config;
+          // Merge with defaults to ensure all fields exist
+          return { ...DEFAULT_CONFIG, ...loadedConfig };
       }
       
       return DEFAULT_CONFIG;
     } catch (error) {
-      console.error('Error fetching config from Neon (using defaults):', error);
+      console.error('DB Load Error (using defaults):', error);
       return DEFAULT_CONFIG;
     }
   },
 
   /**
-   * Saves the site configuration to the database.
+   * Saves config
    */
   saveConfig: async (newConfig: SiteConfig): Promise<boolean> => {
     try {
       const url = getDbUrl();
-
-      if (!url || typeof url !== 'string' || url.trim() === '') {
-        alert('AVISO: No estás conectado a la Base de Datos.\n\nVe al Panel de Admin > Configuración General e introduce la "Cadena de Conexión" de Neon (empieza por postgres://).');
-        return true; // Return true so UI updates optimistically
-      }
-
       const sql = neon(url);
       const configJson = JSON.stringify(newConfig);
       
-      // Ensure table exists before saving (just in case)
+      // SIZE CHECK: 4MB Limit (Safe for Neon HTTP)
+      const sizeBytes = new Blob([configJson]).size;
+      if (sizeBytes > 4 * 1024 * 1024) {
+          alert(`ERROR CRÍTICO: Los datos pesan ${(sizeBytes/1024/1024).toFixed(2)}MB. El límite es 4MB.\n\nProbablemente tienes un video cargado como archivo. Bórralo y usa un enlace.`);
+          return false;
+      }
+
+      // Ensure table exists
       await sql`CREATE TABLE IF NOT EXISTS app_settings (id INTEGER PRIMARY KEY, config JSONB)`;
 
-      // Upsert logic
+      // Upsert
       await sql`
         INSERT INTO app_settings (id, config)
         VALUES (1, ${configJson}::jsonb)
@@ -126,14 +95,8 @@ export const dbService = {
       
       return true;
     } catch (error: any) {
-      console.error('Error saving config to Neon:', error);
-      
-      let errMsg = error.message || String(error);
-      if (errMsg.includes('413') || errMsg.includes('too large') || errMsg.includes('payload')) {
-        alert('ERROR: El archivo es demasiado grande para guardar en la base de datos.\n\nPrueba a usar una URL de video en lugar de subir el archivo directamente.');
-      } else {
-        alert(`Error al guardar en la base de datos Neon:\n${errMsg}`);
-      }
+      console.error('DB Save Error:', error);
+      alert(`Error al guardar en base de datos:\n${error.message}`);
       return false;
     }
   }
