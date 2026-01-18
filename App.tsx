@@ -577,6 +577,10 @@ const App: React.FC = () => {
     );
   }
 
+  // Determine video type variables for styling
+  const isYouTube = activeVideoUrl && (activeVideoUrl.includes('youtube.com') || activeVideoUrl.includes('youtu.be'));
+  const isShorts = activeVideoUrl && activeVideoUrl.includes('/shorts/');
+
   return (
     <div className="min-h-screen bg-neutral-900 text-white selection:bg-yellow-500 selection:text-black overflow-x-hidden">
       
@@ -592,15 +596,22 @@ const App: React.FC = () => {
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-black/60 z-10"></div>
           {/* Key added to force reload when URL changes via admin panel */}
-          {activeVideoUrl && activeVideoUrl.includes('youtube.com') || activeVideoUrl.includes('youtu.be') ? (
-             <div className="absolute inset-0 w-full h-full overflow-hidden">
+          {isYouTube ? (
+             <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
                  <iframe 
                    src={`https://www.youtube.com/embed/${activeVideoUrl.split('v=')[1]?.split('&')[0] || activeVideoUrl.split('/').pop()}?autoplay=1&mute=1&controls=0&loop=1&playlist=${activeVideoUrl.split('v=')[1]?.split('&')[0] || activeVideoUrl.split('/').pop()}&playsinline=1&showinfo=0&rel=0`}
                    title="Background Video"
                    frameBorder="0"
                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                   className="absolute top-1/2 left-1/2 w-[177.77vh] h-[56.25vw] min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 pointer-events-none scale-[1.35]"
-                   style={{pointerEvents: 'none'}}
+                   className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none object-cover ${
+                       isShorts 
+                       ? 'w-[100vw] h-[177.77vw] min-h-[100vh] min-w-[56.25vh]' // Shorts Logic: Ensure full coverage on vertical/horizontal
+                       : 'w-[177.77vh] h-[56.25vw] min-w-[100vw] min-h-[100vh]' // Landscape Logic: Standard 16:9 coverage
+                   }`}
+                   style={{
+                       // Extra scaling to prevent single-pixel edge lines
+                       transform: 'translate(-50%, -50%) scale(1.1)'
+                   }}
                  />
              </div>
           ) : (
