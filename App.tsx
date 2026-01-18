@@ -184,6 +184,15 @@ const App: React.FC = () => {
 
   // --- Dynamic Section Rendering ---
 
+  // Helper to fix Dropbox URLs for images
+  const getOptimizedImage = (url: string) => {
+    if (!url) return '';
+    if (url.includes('dropbox.com') && url.includes('dl=0')) {
+      return url.replace('dl=0', 'raw=1');
+    }
+    return url;
+  };
+
   // 1. Services Grid
   const ServicesSection = (
     <div key="services" className="bg-black py-20 border-b border-zinc-800">
@@ -339,7 +348,7 @@ const App: React.FC = () => {
                   <div key={item.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-yellow-500/50 transition-all group">
                       <div className="h-56 overflow-hidden relative">
                         <img 
-                          src={item.imageUrl} 
+                          src={getOptimizedImage(item.imageUrl)} 
                           alt={item.title} 
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           onError={(e) => {
@@ -583,16 +592,29 @@ const App: React.FC = () => {
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-black/60 z-10"></div>
           {/* Key added to force reload when URL changes via admin panel */}
-          <video 
-            key={activeVideoUrl} 
-            autoPlay 
-            loop 
-            muted 
-            playsInline 
-            className="w-full h-full object-cover opacity-80"
-          >
-            {activeVideoUrl && <source src={activeVideoUrl} type="video/mp4" />}
-          </video>
+          {activeVideoUrl && activeVideoUrl.includes('youtube.com') || activeVideoUrl.includes('youtu.be') ? (
+             <div className="absolute inset-0 w-full h-full overflow-hidden">
+                 <iframe 
+                   src={`https://www.youtube.com/embed/${activeVideoUrl.split('v=')[1]?.split('&')[0] || activeVideoUrl.split('/').pop()}?autoplay=1&mute=1&controls=0&loop=1&playlist=${activeVideoUrl.split('v=')[1]?.split('&')[0] || activeVideoUrl.split('/').pop()}&playsinline=1&showinfo=0&rel=0`}
+                   title="Background Video"
+                   frameBorder="0"
+                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                   className="absolute top-1/2 left-1/2 w-[177.77vh] h-[56.25vw] min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 pointer-events-none scale-[1.35]"
+                   style={{pointerEvents: 'none'}}
+                 />
+             </div>
+          ) : (
+            <video 
+              key={activeVideoUrl} 
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              className="w-full h-full object-cover opacity-80"
+            >
+              {activeVideoUrl && <source src={activeVideoUrl} type="video/mp4" />}
+            </video>
+          )}
         </div>
 
         {/* Hero Content */}

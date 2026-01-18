@@ -42,7 +42,7 @@ export const DEFAULT_CONFIG: SiteConfig = {
   
   // Video Configuration
   videoUrl: "https://videos.pexels.com/video-files/854671/854671-hd_1920_1080_25fps.mp4", // Fallback
-  videoUrlA: "https://videos.pexels.com/video-files/854671/854671-hd_1920_1080_25fps.mp4", // Default Slot A
+  videoUrlA: "https://www.youtube.com/shorts/l2jH-AXia6o", // Default Slot A (Updated per request)
   videoUrlB: "",
   videoUrlC: "",
   videoUrlD: "",
@@ -69,7 +69,7 @@ export const DEFAULT_CONFIG: SiteConfig = {
       id: '1',
       title: 'Sedán Premium',
       description: 'Mercedes-Benz Clase E o similar. Máximo confort para viajes largos y traslados ejecutivos.',
-      imageUrl: 'https://images.pexels.com/photos/170811/pexels-photo-170811.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'
+      imageUrl: 'https://www.dropbox.com/scl/fi/r2zkakuz2mhkvnhul7aw8/60e153e8-cfe8-4f0b-adce-0abc060a92e1.JPG?rlkey=idei07s49o8ov76uyhusyyg8h&st=w4e559uf&dl=0'
     },
     {
       id: '2',

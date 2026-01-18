@@ -210,6 +210,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     }
   };
 
+  // Helper to fix Dropbox URLs for preview
+  const getPreviewImage = (url: string) => {
+    if (!url) return '';
+    if (url.includes('dropbox.com') && url.includes('dl=0')) {
+      return url.replace('dl=0', 'raw=1');
+    }
+    return url;
+  };
+
   const statusUI = getStatusUI();
   const configSizeMB = (configSize / (1024 * 1024)).toFixed(2);
   const isTooLarge = configSize > 3 * 1024 * 1024; // 3MB Limit Warning
@@ -408,7 +417,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                            <div className="space-y-2">
                                 <label className="text-[10px] text-zinc-500 block">URL Imagen (No subir archivo)</label>
                                 <input type="text" value={item.imageUrl} onChange={(e) => handleFleetChange(index, 'imageUrl', e.target.value)} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs font-mono" placeholder="https://..." />
-                                {item.imageUrl && <img src={item.imageUrl} alt="Preview" className="h-16 w-full object-cover rounded border border-zinc-800 opacity-50" />}
+                                {item.imageUrl && <img src={getPreviewImage(item.imageUrl)} alt="Preview" className="h-16 w-full object-cover rounded border border-zinc-800 opacity-50" />}
                            </div>
                         </div>
                     </div>
