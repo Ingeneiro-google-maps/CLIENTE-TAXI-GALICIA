@@ -113,6 +113,11 @@ const TrafficAssistant: React.FC = () => {
       scriptProcessorRef.current = null;
     }
     
+    // Clear global reference to prevent GC issues but allow cleanup
+    if ((window as any)._trafficScriptProcessor) {
+      (window as any)._trafficScriptProcessor = null;
+    }
+
     // Close Gemini session if method exists
     sessionRef.current = null;
     
@@ -122,21 +127,32 @@ const TrafficAssistant: React.FC = () => {
   };
 
   const getApiKey = () => {
-    // Priority 1: process.env (Node/Standard)
-    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-      return process.env.API_KEY;
-    }
-    // Priority 2: import.meta.env (Vite Standard)
+    let key = "";
+
+    // 1. Try Vite Env (Most likely for Vercel/Frontend)
     try {
       const meta = import.meta as any;
-      if (meta.env) {
-         const envKey = meta.env.VITE_API_KEY || meta.env.VITE_GOOGLE_API_KEY || meta.env.API_KEY;
-         if (envKey) return envKey;
+      if (typeof meta !== 'undefined' && meta.env) {
+        key = meta.env.VITE_API_KEY || meta.env.VITE_GOOGLE_API_KEY || "";
       }
     } catch(e) {}
-    
-    // Priority 3: Hardcoded Fallback (Provided by user to fix missing key error)
-    return "AIzaSyDqERNOeIrhopVUc7Gnw9WrPKCIfmGBS5k";
+
+    // 2. Try Process Env (Node/Fallback)
+    if (!key) {
+      try {
+         // Safe access to process
+         if (typeof process !== 'undefined' && process.env) {
+           key = process.env.API_KEY || process.env.REACT_APP_API_KEY || "";
+         }
+      } catch(e) {}
+    }
+
+    // 3. Fallback Hardcoded
+    if (!key) {
+      key = "AIzaSyDqERNOeIrhopVUc7Gnw9WrPKCIfmGBS5k";
+    }
+
+    return key;
   };
 
   const startSession = async () => {
@@ -145,7 +161,7 @@ const TrafficAssistant: React.FC = () => {
 
     // 1. Browser Capability Check
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-       setError('Tu navegador no soporta acceso al micrófono o la conexión no es segura (HTTPS).');
+       setError('Error: Navegador no compatible o sin HTTPS.');
        return;
     }
 
@@ -154,13 +170,23 @@ const TrafficAssistant: React.FC = () => {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       
       // Initialize Input Context (16kHz for Gemini)
-      if (!inputAudioContextRef.current) {
-        inputAudioContextRef.current = new AudioContextClass({ sampleRate: 16000 });
+      try {
+        if (!inputAudioContextRef.current) {
+          inputAudioContextRef.current = new AudioContextClass({ sampleRate: 16000 });
+        }
+      } catch (e) {
+        console.warn("16kHz Context not supported, falling back to default");
+        inputAudioContextRef.current = new AudioContextClass();
       }
       
       // Initialize Output Context (24kHz for Gemini)
-      if (!audioContextRef.current) {
-         audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
+      try {
+        if (!audioContextRef.current) {
+           audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
+        }
+      } catch (e) {
+        console.warn("24kHz Context not supported, falling back to default");
+        audioContextRef.current = new AudioContextClass();
       }
 
       // iOS/Mobile Compatibility: Force resume audio context
@@ -174,7 +200,6 @@ const TrafficAssistant: React.FC = () => {
       setStatusMessage('Conectando con satélite...');
 
       // 3. Get Microphone Access
-      // Note: Removed 'sampleRate: 16000' constraint as it causes OverconstrainedError on many mobile devices
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -187,7 +212,7 @@ const TrafficAssistant: React.FC = () => {
       // 4. Initialize Gemini Client
       const apiKey = getApiKey();
       if (!apiKey) {
-          throw new Error("API Key no encontrada. Verifica tu configuración.");
+          throw new Error("API Key no encontrada. Verifica configuración.");
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -214,7 +239,10 @@ const TrafficAssistant: React.FC = () => {
             
             const source = inputAudioContextRef.current.createMediaStreamSource(stream);
             const processor = inputAudioContextRef.current.createScriptProcessor(4096, 1, 1);
+            
+            // CRITICAL: Attach to window to prevent Garbage Collection in some browsers/environments
             scriptProcessorRef.current = processor;
+            (window as any)._trafficScriptProcessor = processor;
 
             processor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
@@ -224,6 +252,8 @@ const TrafficAssistant: React.FC = () => {
               sessionPromise.then(session => {
                 sessionRef.current = session;
                 session.sendRealtimeInput({ media: pcmBlob });
+              }).catch(err => {
+                  console.warn("Error sending audio frame", err);
               });
             };
 
@@ -231,8 +261,6 @@ const TrafficAssistant: React.FC = () => {
             processor.connect(inputAudioContextRef.current.destination);
 
             // --- AUTO-START TRIGGER ---
-            // Send 1 second of "silence" to force the model to wake up and say the greeting
-            // without waiting for user input.
             const silenceFrame = new Float32Array(16000); // 1 sec at 16k
             const silenceBlob = createBlob(silenceFrame);
             sessionPromise.then(session => {
@@ -285,19 +313,29 @@ const TrafficAssistant: React.FC = () => {
               setIsSpeaking(false);
             }
           },
-          onclose: () => {
-            console.log('Gemini Live Disconnected');
+          onclose: (e: CloseEvent) => {
+            console.log('Gemini Live Disconnected', e);
             cleanupAudio();
             setStatusMessage('Desconectado');
+            
+            // Enhanced Logic for Production Disconnects
+            // Code 1000 is normal closure. Anything else (or undefined) is likely an error/drop.
+            if (e && e.code !== 1000) {
+                // If we haven't already set a specific permission error, set a generic disconnect error
+                setError((prev) => prev || 'Desconexión inesperada. (Posible bloqueo de API Key en este dominio)');
+            }
           },
           onerror: (err) => {
             console.error('Gemini Live Error:', err);
-            if (err.toString().includes('permission') || err.toString().includes('denied')) {
+            const errStr = err.toString();
+            
+            if (errStr.includes('permission') || errStr.includes('denied')) {
                 setError('Permiso de micrófono denegado.');
+            } else if (errStr.includes('403') || errStr.includes('key')) {
+                setError('Error de Llave API (403). Dominio no permitido en GCloud.');
             } else {
-                // Try to extract more info from the error object
                 const msg = err instanceof Error ? err.message : String(err);
-                setError(`Error de satélite: ${msg}`);
+                setError(`Error de conexión: ${msg}`);
             }
             cleanupAudio();
           }
@@ -306,16 +344,13 @@ const TrafficAssistant: React.FC = () => {
 
     } catch (err: any) {
       console.error('Initialization Error:', err);
-      // Detailed error handling for better debugging
+      // Detailed error handling
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
           setError('Permiso denegado. Habilita el micrófono.');
       } else if (err.name === 'NotFoundError') {
           setError('No se encontró micrófono.');
-      } else if (err.name === 'OverconstrainedError') {
-          setError('Error de hardware: Micrófono no soporta la configuración.');
       } else {
-          // Show the actual error message
-          setError(err.message || 'No se pudo iniciar el sistema de audio.');
+          setError(err.message || 'Error desconocido al iniciar audio.');
       }
       cleanupAudio();
     }
@@ -373,9 +408,9 @@ const TrafficAssistant: React.FC = () => {
             </div>
 
             {error ? (
-              <div className="flex flex-col items-center justify-center p-2 bg-red-900/30 rounded-lg border border-red-500/50">
+              <div className="flex flex-col items-center justify-center p-2 bg-red-900/30 rounded-lg border border-red-500/50 w-full">
                  <AlertCircle className="text-red-500 mb-2" size={24} />
-                 <p className="text-red-400 text-xs text-center font-bold">{error}</p>
+                 <p className="text-red-400 text-xs text-center font-bold break-words w-full">{error}</p>
                  <button onClick={() => setError(null)} className="mt-2 text-[10px] text-zinc-400 underline">Reintentar</button>
               </div>
             ) : (
