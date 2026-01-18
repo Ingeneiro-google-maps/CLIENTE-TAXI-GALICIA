@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, MicOff, X, Activity, Radio, Volume2, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Mic, MicOff, X, Activity, Radio, Volume2, AlertTriangle, WifiOff } from 'lucide-react';
 
 // --- Audio Helpers (Encoding/Decoding) ---
 
 function downsampleBuffer(buffer: Float32Array, inputRate: number, outputRate: number = 16000): Float32Array {
   if (inputRate === outputRate) return buffer;
+  if (!buffer || buffer.length === 0) return new Float32Array(0);
   
   const sampleRateRatio = inputRate / outputRate;
   const newLength = Math.round(buffer.length / sampleRateRatio);
@@ -20,6 +21,7 @@ function downsampleBuffer(buffer: Float32Array, inputRate: number, outputRate: n
       accum += buffer[j];
       count++;
     }
+    // Handle edge case
     if (count === 0 && offsetBuffer < buffer.length) {
        accum = buffer[offsetBuffer];
        count = 1;
@@ -119,18 +121,21 @@ const TrafficAssistant: React.FC = () => {
     });
     sourceNodesRef.current.clear();
 
-    if (audioContextRef.current) {
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
-      audioContextRef.current = null;
     }
-    if (inputAudioContextRef.current) {
+    audioContextRef.current = null;
+
+    if (inputAudioContextRef.current && inputAudioContextRef.current.state !== 'closed') {
       inputAudioContextRef.current.close();
-      inputAudioContextRef.current = null;
     }
+    inputAudioContextRef.current = null;
+
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
       mediaStreamRef.current = null;
     }
+    
     if (scriptProcessorRef.current) {
       scriptProcessorRef.current.disconnect();
       scriptProcessorRef.current = null;
@@ -147,32 +152,8 @@ const TrafficAssistant: React.FC = () => {
   };
 
   const getApiKey = () => {
-    let key = "";
-
-    // 1. Try process.env first (Standard/Node/Webpack)
-    if (typeof process !== 'undefined' && process.env) {
-       if (process.env.API_KEY) key = process.env.API_KEY;
-       else if (process.env.NEXT_PUBLIC_API_KEY) key = process.env.NEXT_PUBLIC_API_KEY;
-       else if (process.env.REACT_APP_API_KEY) key = process.env.REACT_APP_API_KEY;
-    }
-
-    // 2. Try Vite/Vercel Import Meta (Client side standard)
-    if (!key) {
-      try {
-        // @ts-ignore
-        if (typeof import.meta !== 'undefined' && import.meta.env) {
-           // @ts-ignore
-           if (import.meta.env.VITE_API_KEY) key = import.meta.env.VITE_API_KEY;
-           // @ts-ignore
-           if (import.meta.env.VITE_GOOGLE_API_KEY) key = import.meta.env.VITE_GOOGLE_API_KEY;
-           // @ts-ignore
-           if (import.meta.env.API_KEY) key = import.meta.env.API_KEY;
-        }
-      } catch (e) {}
-    }
-
-    // Clean the key (remove quotes and whitespace)
-    return key ? key.trim().replace(/^["']|["']$/g, '') : "";
+    // CLAVE PROPORCIONADA DIRECTAMENTE PARA CORRECCIÓN DE ERROR EN PRODUCCIÓN
+    return "AIzaSyCYZm2lUlqvPfz34PHocEmqYKiLnX0__pU";
   };
 
   const startSession = async () => {
@@ -180,42 +161,37 @@ const TrafficAssistant: React.FC = () => {
     setStatusMessage('Iniciando sistemas...');
 
     const apiKey = getApiKey();
+    
     if (!apiKey) {
-        const isVercel = window.location.hostname.includes('vercel.app');
-        const msg = isVercel
-            ? "Falta 'VITE_API_KEY' en Vercel. Ve a Settings > Environment Variables y añade tu Gemini API Key."
-            : "Error: No se encontró API Key. Configura VITE_API_KEY en tu archivo .env";
-        
-        setError(msg);
-        console.error("TRAFFIC ASSISTANT ERROR:", msg);
+        setError("Error Crítico: No se ha configurado la API Key.");
         return;
     }
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-       setError('Error: Navegador no compatible o falta HTTPS.');
+       setError('Tu navegador no soporta acceso al micrófono (¿Falta HTTPS?).');
        return;
     }
 
     try {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      
       const inputCtx = new AudioContextClass();
       const outputCtx = new AudioContextClass();
 
-      // Resume immediately to handle mobile browser autoplay policies
+      // Critical: Resume immediately for iOS/Android
       await Promise.all([inputCtx.resume(), outputCtx.resume()]);
 
       inputAudioContextRef.current = inputCtx;
       audioContextRef.current = outputCtx;
 
-      setStatusMessage('Conectando con satélite...');
+      setStatusMessage('Conectando satélite...');
 
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          channelCount: 1, 
+          channelCount: 1,
+          sampleRate: 16000 // Try to request 16k directly
         } 
       });
       mediaStreamRef.current = stream;
@@ -242,6 +218,7 @@ const TrafficAssistant: React.FC = () => {
             
             const currentSampleRate = inputAudioContextRef.current.sampleRate;
             const source = inputAudioContextRef.current.createMediaStreamSource(stream);
+            // Buffer size 4096 is safer for web, 2048 is lower latency
             const processor = inputAudioContextRef.current.createScriptProcessor(4096, 1, 1);
             
             scriptProcessorRef.current = processor;
@@ -256,20 +233,22 @@ const TrafficAssistant: React.FC = () => {
                 sessionRef.current = session;
                 session.sendRealtimeInput({ media: pcmBlob });
               }).catch(err => {
-                 // Silent catch
+                 // Ignore send errors if session closed
               });
             };
 
             source.connect(processor);
             processor.connect(inputAudioContextRef.current.destination);
 
-            // Wake up signal
+            // Send initial silence to wake up the model
             setTimeout(() => {
-                const silenceFrame = new Float32Array(16000); 
-                const silenceBlob = createBlob(silenceFrame);
-                sessionPromise.then(session => {
-                   session.sendRealtimeInput({ media: silenceBlob });
-                }).catch(e => console.warn("Initial silence failed", e));
+                try {
+                  const silenceFrame = new Float32Array(16000); 
+                  const silenceBlob = createBlob(silenceFrame);
+                  sessionPromise.then(session => {
+                    session.sendRealtimeInput({ media: silenceBlob });
+                  });
+                } catch(e) {}
             }, 500);
           },
           onmessage: async (msg: LiveServerMessage) => {
@@ -319,28 +298,29 @@ const TrafficAssistant: React.FC = () => {
           onclose: (e: CloseEvent) => {
             console.log('Gemini Live Disconnected', e);
             cleanupAudio();
-            setStatusMessage('Desconectado');
             
+            // DIAGNOSTICS FOR USER
             if (e.code === 1008) {
-               setError('Error 1008: Política Violada. Verifica en Google Cloud Console si tu API Key permite este dominio (Referrer) y si la API "Generative Language API" está habilitada.');
+               // Policy Violation - almost always domain restriction
+               const domain = window.location.hostname;
+               setError(`BLOQUEO DE SEGURIDAD (1008): Tu API Key no permite peticiones desde "${domain}". Ve a Google Cloud Console > Credentials y añade este dominio o quita las restricciones.`);
             } else if (e.code === 1000) {
-               // Normal closure
+               setStatusMessage('Desconectado');
             } else if (e.code === 1006) {
-               setError('Error 1006: Conexión cerrada. Revisa tu internet o intenta de nuevo.');
+               // Abnormal closure - can be network or generic API error
+               setError('Conexión perdida (1006). Puede ser un firewall o la API Key inválida.');
             } else {
-               setError(`Desconexión (Code ${e.code}). Revisa API Key y Permisos.`);
+               setError(`Desconexión inesperada (Código ${e.code}).`);
             }
           },
           onerror: (err) => {
             console.error('Gemini Live Error:', err);
             const errStr = err.toString();
             
-            if (errStr.includes('permission') || errStr.includes('denied')) {
-                setError('Permiso de micrófono denegado.');
-            } else if (errStr.includes('403') || errStr.includes('key')) {
-                setError('Error 403: API Key inválida o restringida.');
+            if (errStr.includes('403')) {
+                setError('Error 403: API Key rechazada. Verifica que la API "Generative Language" esté activa en Google Cloud.');
             } else {
-                setError('Error de conexión con el servidor.');
+                setError('Error de conexión. Intenta de nuevo.');
             }
             cleanupAudio();
           }
@@ -348,13 +328,11 @@ const TrafficAssistant: React.FC = () => {
       });
 
     } catch (err: any) {
-      console.error('Initialization Error:', err);
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setError('Permiso de micrófono denegado.');
-      } else if (err.name === 'NotFoundError') {
-          setError('No se encontró micrófono.');
+      console.error('Init Error:', err);
+      if (err.name === 'NotAllowedError') {
+          setError('Micrófono bloqueado. Permite el acceso en el navegador.');
       } else {
-          setError(err.message || 'Error desconocido.');
+          setError(err.message || 'Error al iniciar audio.');
       }
       cleanupAudio();
     }
@@ -364,6 +342,7 @@ const TrafficAssistant: React.FC = () => {
     if (isActive) {
       cleanupAudio();
       setIsActive(false);
+      setError(null);
     } else {
       setIsActive(true);
       startSession();
@@ -407,11 +386,13 @@ const TrafficAssistant: React.FC = () => {
             </div>
 
             {error ? (
-              <div className="flex flex-col items-center justify-center p-3 bg-red-900/40 rounded-lg border border-red-500/50 w-full animate-in fade-in zoom-in">
+              <div className="flex flex-col items-center justify-center p-3 bg-red-900/40 rounded-lg border border-red-500/50 w-full animate-in fade-in zoom-in z-20">
                  <AlertTriangle className="text-red-500 mb-2" size={28} />
-                 <p className="text-red-400 text-xs text-center font-bold break-words w-full leading-tight">{error}</p>
-                 <button onClick={() => { setError(null); toggleAssistant(); }} className="mt-3 bg-red-900/50 text-white text-[10px] px-3 py-1 rounded hover:bg-red-800 transition-colors">
-                    Cerrar e Intentar de nuevo
+                 <p className="text-red-200 text-[10px] text-center font-mono break-words w-full leading-tight mb-3">
+                   {error}
+                 </p>
+                 <button onClick={() => { setError(null); toggleAssistant(); }} className="bg-red-600 hover:bg-red-500 text-white text-[10px] px-4 py-2 rounded-full font-bold transition-colors">
+                    REINICIAR SISTEMA
                  </button>
               </div>
             ) : (
