@@ -5,31 +5,34 @@ import { Mic, MicOff, X, Activity, Radio, Volume2, AlertCircle } from 'lucide-re
 // --- Audio Helpers (Encoding/Decoding) ---
 
 /**
- * Downsamples audio buffer to target sample rate (16kHz for Gemini).
- * Essential for mobile/production where AudioContext often forces 44.1kHz or 48kHz.
+ * Robust downsampling to 16kHz.
+ * Uses a safe averaging method to prevent aliasing and handle ratio mismatches.
  */
 function downsampleBuffer(buffer: Float32Array, inputRate: number, outputRate: number = 16000): Float32Array {
   if (inputRate === outputRate) return buffer;
-  if (inputRate < outputRate) return buffer; // Should not happen usually
-
+  
   const sampleRateRatio = inputRate / outputRate;
   const newLength = Math.round(buffer.length / sampleRateRatio);
   const result = new Float32Array(newLength);
   
-  let offsetResult = 0;
-  let offsetBuffer = 0;
-  
-  while (offsetResult < result.length) {
-    const nextOffsetBuffer = Math.round((offsetResult + 1) * sampleRateRatio);
-    // Use simple averaging to prevent aliasing
+  for (let i = 0; i < newLength; i++) {
+    const nextOffsetBuffer = Math.round((i + 1) * sampleRateRatio);
+    // Use floor for the start to ensure we don't miss samples
+    const offsetBuffer = Math.round(i * sampleRateRatio);
+    
     let accum = 0, count = 0;
-    for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
-      accum += buffer[i];
+    // Iterate through the corresponding input samples
+    for (let j = offsetBuffer; j < nextOffsetBuffer && j < buffer.length; j++) {
+      accum += buffer[j];
       count++;
     }
-    result[offsetResult] = count > 0 ? accum / count : 0;
-    offsetResult++;
-    offsetBuffer = nextOffsetBuffer;
+    // If we didn't find any samples (ratio < 1, upsampling case - shouldn't happen here), just take the nearest
+    if (count === 0 && offsetBuffer < buffer.length) {
+       accum = buffer[offsetBuffer];
+       count = 1;
+    }
+
+    result[i] = count > 0 ? accum / count : 0;
   }
   return result;
 }
@@ -109,7 +112,7 @@ const TrafficAssistant: React.FC = () => {
     Eres el "Asistente de Viaje y Tráfico" de Taxi Vero Caldas, operando en Galicia, España.
     
     INSTRUCCIÓN DE INICIO:
-    - Tu primera respuesta SIEMPRE debe ser el saludo, independientemente de lo que recibas primero.
+    - Tu primera respuesta SIEMPRE debe ser el saludo.
     - SALUDA EXACTAMENTE ASÍ: "Hola, soy tu asistente de viaje. Puedes aquí consultar tráficos, accidentes y notificarme en la vida de la carretera."
 
     COMPORTAMIENTO:
@@ -117,8 +120,7 @@ const TrafficAssistant: React.FC = () => {
     2. Si el usuario te pregunta por el tráfico, pregúntale: "¿En qué ruta quieres verificar si hay tráfico o algún accidente?"
     3. Cuando el usuario te diga una ruta (ej: "de Pontevedra a Vigo", "AP-9", "A-55"), USA LA HERRAMIENTA GOOGLE SEARCH INMEDIATAMENTE.
     4. Busca específicamente: "tráfico DGT Galicia [ruta]", "accidentes hoy [ruta]", "twitter tráfico galicia [ruta]".
-    5. Informa de manera profesional y concisa sobre incidentes, retenciones, clima o si la vía está despejada. Si no encuentras nada relevante, dilo claramente: "He verificado las redes y sistemas de tráfico y no reportan incidencias en esa ruta ahora mismo."
-    6. Sé servicial, rápido y usa un tono profesional de taxista/copiloto.
+    5. Informa de manera profesional y concisa sobre incidentes, retenciones, clima o si la vía está despejada.
   `;
 
   const cleanupAudio = () => {
@@ -161,26 +163,30 @@ const TrafficAssistant: React.FC = () => {
 
   const getApiKey = () => {
     let key = "";
-    // 1. Try Vite Env (Most likely for Vercel/Frontend)
+    
+    // 1. Try Environment Variables (Vite/Next/Standard)
     try {
-      const meta = import.meta as any;
-      if (typeof meta !== 'undefined' && meta.env) {
-        key = meta.env.VITE_API_KEY || meta.env.VITE_GOOGLE_API_KEY || "";
-      }
-    } catch(e) {}
+      // @ts-ignore
+      const env = import.meta.env || {};
+      // @ts-ignore
+      const processEnv = typeof process !== 'undefined' ? process.env : {};
 
-    // 2. Try Process Env (Node/Fallback)
-    if (!key) {
-      try {
-         if (typeof process !== 'undefined' && process.env) {
-           key = process.env.API_KEY || process.env.REACT_APP_API_KEY || "";
-         }
-      } catch(e) {}
+      key = env.VITE_API_KEY || 
+            env.VITE_GOOGLE_API_KEY || 
+            processEnv.NEXT_PUBLIC_API_KEY || 
+            processEnv.REACT_APP_API_KEY || 
+            processEnv.API_KEY || 
+            "";
+    } catch(e) {
+       console.warn("Env read error", e);
     }
 
-    // 3. Fallback Hardcoded
+    // 2. Fallback Hardcoded (ONLY for Development/Demo)
+    // NOTE: This key might be restricted to localhost. If you are deploying to Vercel,
+    // you MUST set VITE_API_KEY in Vercel Project Settings.
     if (!key) {
       key = "AIzaSyDqERNOeIrhopVUc7Gnw9WrPKCIfmGBS5k";
+      console.warn("Using Hardcoded Fallback API Key. This may fail on Vercel due to domain restrictions.");
     }
 
     return key;
@@ -199,29 +205,15 @@ const TrafficAssistant: React.FC = () => {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       
       // --- INPUT CONTEXT (MICROPHONE) ---
-      // We try to ask for 16kHz, but if the browser/hardware rejects it, we accept default.
-      // We will handle resampling manually later.
-      try {
-        if (!inputAudioContextRef.current) {
-          inputAudioContextRef.current = new AudioContextClass({ sampleRate: 16000 });
-        }
-      } catch (e) {
-        console.warn("16kHz Input Context not supported, falling back to default");
-        inputAudioContextRef.current = new AudioContextClass(); // Default system rate
-      }
+      // IMPORTANT: Do NOT force a sampleRate here. Let the browser/OS decide.
+      // Forcing 16000 often fails or causes glitches on iOS/Android/Vercel deployments.
+      // We will manually downsample later.
+      inputAudioContextRef.current = new AudioContextClass();
       
       // --- OUTPUT CONTEXT (SPEAKER) ---
-      // Gemini sends 24kHz. Browser will resample 24k -> System Rate automatically on output.
-      try {
-        if (!audioContextRef.current) {
-           audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
-        }
-      } catch (e) {
-        console.warn("24kHz Output Context not supported, falling back to default");
-        audioContextRef.current = new AudioContextClass();
-      }
+      audioContextRef.current = new AudioContextClass();
 
-      // Resume contexts (needed for iOS/Chrome autoplay policies)
+      // Resume contexts (needed for mobile autoplay policies)
       if (inputAudioContextRef.current.state === 'suspended') {
         await inputAudioContextRef.current.resume();
       }
@@ -237,7 +229,7 @@ const TrafficAssistant: React.FC = () => {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          channelCount: 1,
+          channelCount: 1, // Force Mono
         } 
       });
       mediaStreamRef.current = stream;
@@ -266,11 +258,12 @@ const TrafficAssistant: React.FC = () => {
             
             if (!inputAudioContextRef.current || !stream) return;
             
+            // Get actual system sample rate (e.g., 48000 or 44100)
             const currentSampleRate = inputAudioContextRef.current.sampleRate;
-            console.log("Input Sample Rate:", currentSampleRate);
+            console.log("System Input Rate:", currentSampleRate);
 
             const source = inputAudioContextRef.current.createMediaStreamSource(stream);
-            // 4096 buffer size provides a balance between latency and processor overhead
+            // 4096 is a safe buffer size.
             const processor = inputAudioContextRef.current.createScriptProcessor(4096, 1, 1);
             
             // Attach to window to prevent Garbage Collection
@@ -280,16 +273,15 @@ const TrafficAssistant: React.FC = () => {
             processor.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
               
-              // DOWNSAMPLE if necessary (e.g. System is 48kHz, Gemini needs 16kHz)
+              // ALWAYS Downsample to 16000 for Gemini
               const downsampledData = downsampleBuffer(inputData, currentSampleRate, 16000);
-              
               const pcmBlob = createBlob(downsampledData);
               
               sessionPromise.then(session => {
                 sessionRef.current = session;
                 session.sendRealtimeInput({ media: pcmBlob });
               }).catch(err => {
-                  console.warn("Error sending audio frame", err);
+                  console.warn("Frame send error (ignoring):", err);
               });
             };
 
@@ -297,13 +289,14 @@ const TrafficAssistant: React.FC = () => {
             processor.connect(inputAudioContextRef.current.destination);
 
             // --- AUTO-START TRIGGER ---
-            // Send 1 second of "silence" to force the model to wake up
-            // Use 16000 empty samples because that matches our 16kHz mimetype
-            const silenceFrame = new Float32Array(16000); 
-            const silenceBlob = createBlob(silenceFrame);
-            sessionPromise.then(session => {
-               session.sendRealtimeInput({ media: silenceBlob });
-            });
+            // Send silence to wake up model, BUT wait slightly to ensure connection is stable.
+            setTimeout(() => {
+                const silenceFrame = new Float32Array(16000); 
+                const silenceBlob = createBlob(silenceFrame);
+                sessionPromise.then(session => {
+                   session.sendRealtimeInput({ media: silenceBlob });
+                }).catch(e => console.warn("Initial silence failed", e));
+            }, 500);
           },
           onmessage: async (msg: LiveServerMessage) => {
             const base64Audio = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
@@ -354,9 +347,17 @@ const TrafficAssistant: React.FC = () => {
             cleanupAudio();
             setStatusMessage('Desconectado');
             
-            // Code 1000 is normal closure.
+            // Only show error if it wasn't a clean close (1000)
             if (e && e.code !== 1000) {
-                setError((prev) => prev || `Desconexión (Code: ${e.code}). Verifica API Key en Vercel.`);
+                // Check if it's the specific hardcoded key
+                const currentKey = getApiKey();
+                const isFallback = currentKey.startsWith("AIzaSyDqERNOeIrhopVUc7Gnw9WrPKCIfmGBS5k");
+                
+                if (isFallback) {
+                   setError('Error: API Key de prueba bloqueada en este dominio. Añade VITE_API_KEY en Vercel.');
+                } else {
+                   setError(`Desconexión inesperada (Code ${e.code}). Revisa tu API Key.`);
+                }
             }
           },
           onerror: (err) => {
@@ -366,10 +367,9 @@ const TrafficAssistant: React.FC = () => {
             if (errStr.includes('permission') || errStr.includes('denied')) {
                 setError('Permiso de micrófono denegado.');
             } else if (errStr.includes('403') || errStr.includes('key')) {
-                setError('Error 403: API Key bloqueada para este dominio.');
+                setError('Error 403: API Key inválida o bloqueada.');
             } else {
-                const msg = err instanceof Error ? err.message : String(err);
-                setError(`Error de conexión: ${msg}`);
+                setError('Error de conexión con el servidor.');
             }
             cleanupAudio();
           }
