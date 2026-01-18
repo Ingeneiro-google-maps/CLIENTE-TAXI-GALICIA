@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -371,6 +371,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                         <input type="checkbox" name="enableAssistant" checked={formData.enableAssistant !== false} onChange={handleToggle} className="sr-only peer" />
                         <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
                     </label>
+                </div>
+
+                {/* API Key Field */}
+                <div className="flex items-center justify-between p-3 bg-black border border-zinc-800 rounded-lg">
+                    <div className="flex items-center gap-3 w-full">
+                        <div className="bg-blue-600 p-2 rounded text-white shrink-0"><Key size={18} /></div>
+                        <div className="w-full">
+                            <p className="font-bold text-sm text-white">API Key de Google Gemini</p>
+                            <p className="text-[10px] text-zinc-500 mb-1">Para solucionar errores de dominio (1008)</p>
+                            <input 
+                              type="password" 
+                              name="geminiApiKey" 
+                              value={formData.geminiApiKey} 
+                              onChange={handleChange} 
+                              placeholder="Pega aquí tu API Key (AIza...)"
+                              className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-white text-xs focus:border-yellow-500 outline-none font-mono"
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Footer Settings */}

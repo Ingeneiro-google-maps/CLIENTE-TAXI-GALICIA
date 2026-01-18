@@ -653,7 +653,7 @@ const App: React.FC = () => {
       <InstallPWA />
 
       {/* --- TRAFFIC ASSISTANT (CONDITIONAL RENDER) --- */}
-      {config.enableAssistant && <TrafficAssistant />}
+      {config.enableAssistant && <TrafficAssistant apiKey={config.geminiApiKey} />}
 
       {/* --- HERO SECTION (Always Top) --- */}
       <div className="relative h-screen w-full flex items-center justify-center overflow-hidden">

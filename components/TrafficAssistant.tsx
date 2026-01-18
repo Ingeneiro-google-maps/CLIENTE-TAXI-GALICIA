@@ -83,7 +83,11 @@ async function decodeAudioData(
 
 // --- Component ---
 
-const TrafficAssistant: React.FC = () => {
+interface TrafficAssistantProps {
+  apiKey?: string;
+}
+
+const TrafficAssistant: React.FC<TrafficAssistantProps> = ({ apiKey: propApiKey }) => {
   // State Machine: 'idle' | 'connecting' | 'connected' | 'error'
   const [status, setStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
   const [isActive, setIsActive] = useState(false);
@@ -156,9 +160,14 @@ const TrafficAssistant: React.FC = () => {
   };
 
   const getApiKey = () => {
-    // Priority: Env Var -> Hardcoded Fallback
-    const key = process.env.API_KEY || "AIzaSyCYZm2lUlqvPfz34PHocEmqYKiLnX0__pU";
-    return key;
+    // 1. Config from Admin Panel (Highest Priority)
+    if (propApiKey && propApiKey.trim().length > 10) return propApiKey;
+    
+    // 2. Env Var
+    if (process.env.API_KEY) return process.env.API_KEY;
+
+    // 3. Fallback (Likely restricted/invalid if seeing 1008)
+    return "AIzaSyCYZm2lUlqvPfz34PHocEmqYKiLnX0__pU";
   };
 
   const startSession = async () => {
@@ -170,7 +179,7 @@ const TrafficAssistant: React.FC = () => {
     const apiKey = getApiKey();
     
     if (!apiKey) {
-        setErrorMessage("Error: Falta API Key");
+        setErrorMessage("Falta API Key de Gemini");
         setStatus('error');
         return;
     }
@@ -299,9 +308,9 @@ const TrafficAssistant: React.FC = () => {
             setStatus('error');
             
             if (e.code === 1008) {
-                setErrorMessage('Error de Dominio: Verifica Google Console.');
+                setErrorMessage('Error de Dominio: Configura tu API Key en el Panel (Candado).');
             } else {
-                setErrorMessage('Conexión perdida con el servidor.');
+                setErrorMessage(`Conexión perdida (Código ${e.code}).`);
             }
           },
           onerror: (err) => {

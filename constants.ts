@@ -51,6 +51,7 @@ export const DEFAULT_CONFIG: SiteConfig = {
   
   // General
   enableAssistant: true,
+  geminiApiKey: "", // User must provide this in Admin Panel to fix Domain Errors
 
   // Default order: Services -> Transfers -> Fleet -> Reservation
   sectionOrder: ['services', 'transfers', 'fleet', 'reservation'],

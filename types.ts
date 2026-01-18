@@ -43,6 +43,7 @@ export interface SiteConfig {
   
   // New: General Settings
   enableAssistant: boolean; // Toggle for AI Assistant
+  geminiApiKey: string; // NEW: Custom API Key to fix Domain Errors (1008)
 
   // Order of sections
   sectionOrder: string[]; 
