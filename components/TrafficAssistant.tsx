@@ -147,41 +147,43 @@ const TrafficAssistant: React.FC = () => {
   };
 
   const getApiKey = () => {
+    let key = "";
+
     // 1. Try process.env first (Standard/Node/Webpack)
-    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-      return process.env.API_KEY;
-    }
-
-    // 2. Try Vite/Vercel Import Meta (Most likely for this project)
-    try {
-      // @ts-ignore
-      if (typeof import.meta !== 'undefined' && import.meta.env) {
-         // @ts-ignore
-         if (import.meta.env.VITE_API_KEY) return import.meta.env.VITE_API_KEY;
-         // @ts-ignore
-         if (import.meta.env.VITE_GOOGLE_API_KEY) return import.meta.env.VITE_GOOGLE_API_KEY;
-      }
-    } catch (e) {}
-
-    // 3. Fallbacks
     if (typeof process !== 'undefined' && process.env) {
-        if (process.env.NEXT_PUBLIC_API_KEY) return process.env.NEXT_PUBLIC_API_KEY;
-        if (process.env.REACT_APP_API_KEY) return process.env.REACT_APP_API_KEY;
+       if (process.env.API_KEY) key = process.env.API_KEY;
+       else if (process.env.NEXT_PUBLIC_API_KEY) key = process.env.NEXT_PUBLIC_API_KEY;
+       else if (process.env.REACT_APP_API_KEY) key = process.env.REACT_APP_API_KEY;
     }
 
-    return "";
+    // 2. Try Vite/Vercel Import Meta (Client side standard)
+    if (!key) {
+      try {
+        // @ts-ignore
+        if (typeof import.meta !== 'undefined' && import.meta.env) {
+           // @ts-ignore
+           if (import.meta.env.VITE_API_KEY) key = import.meta.env.VITE_API_KEY;
+           // @ts-ignore
+           if (import.meta.env.VITE_GOOGLE_API_KEY) key = import.meta.env.VITE_GOOGLE_API_KEY;
+           // @ts-ignore
+           if (import.meta.env.API_KEY) key = import.meta.env.API_KEY;
+        }
+      } catch (e) {}
+    }
+
+    // Clean the key (remove quotes and whitespace)
+    return key ? key.trim().replace(/^["']|["']$/g, '') : "";
   };
 
   const startSession = async () => {
     setError(null);
     setStatusMessage('Iniciando sistemas...');
 
-    // 0. Check API Key immediately
     const apiKey = getApiKey();
     if (!apiKey) {
         const isVercel = window.location.hostname.includes('vercel.app');
         const msg = isVercel
-            ? "Falta 'VITE_API_KEY' en Vercel. Ve a Settings > Environment Variables y añádela."
+            ? "Falta 'VITE_API_KEY' en Vercel. Ve a Settings > Environment Variables y añade tu Gemini API Key."
             : "Error: No se encontró API Key. Configura VITE_API_KEY en tu archivo .env";
         
         setError(msg);
@@ -197,11 +199,10 @@ const TrafficAssistant: React.FC = () => {
     try {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       
-      // 1. Initialize Contexts immediately to capture User Gesture
       const inputCtx = new AudioContextClass();
       const outputCtx = new AudioContextClass();
 
-      // 2. Resume immediately (Critical for mobile)
+      // Resume immediately to handle mobile browser autoplay policies
       await Promise.all([inputCtx.resume(), outputCtx.resume()]);
 
       inputAudioContextRef.current = inputCtx;
@@ -209,7 +210,6 @@ const TrafficAssistant: React.FC = () => {
 
       setStatusMessage('Conectando con satélite...');
 
-      // 3. Get Microphone Stream
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -320,9 +320,15 @@ const TrafficAssistant: React.FC = () => {
             console.log('Gemini Live Disconnected', e);
             cleanupAudio();
             setStatusMessage('Desconectado');
-            if (e && e.code !== 1000) {
-                 // Common error for missing key or bad permissions
-                 setError(`Desconexión (Code ${e.code}). Revisa API Key y Permisos.`);
+            
+            if (e.code === 1008) {
+               setError('Error 1008: Política Violada. Verifica en Google Cloud Console si tu API Key permite este dominio (Referrer) y si la API "Generative Language API" está habilitada.');
+            } else if (e.code === 1000) {
+               // Normal closure
+            } else if (e.code === 1006) {
+               setError('Error 1006: Conexión cerrada. Revisa tu internet o intenta de nuevo.');
+            } else {
+               setError(`Desconexión (Code ${e.code}). Revisa API Key y Permisos.`);
             }
           },
           onerror: (err) => {
@@ -332,7 +338,7 @@ const TrafficAssistant: React.FC = () => {
             if (errStr.includes('permission') || errStr.includes('denied')) {
                 setError('Permiso de micrófono denegado.');
             } else if (errStr.includes('403') || errStr.includes('key')) {
-                setError('Error 403: API Key inválida o restringida por dominio.');
+                setError('Error 403: API Key inválida o restringida.');
             } else {
                 setError('Error de conexión con el servidor.');
             }
