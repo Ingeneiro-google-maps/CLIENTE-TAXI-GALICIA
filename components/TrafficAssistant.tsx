@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality } from '@google/genai';
-import { Mic, X, Activity, Radio, Volume2, AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Mic, X, Activity, Radio, Volume2, AlertTriangle, CheckCircle2, RefreshCw, PowerOff } from 'lucide-react';
 
 // --- Audio Helpers (Encoding/Decoding) ---
 
@@ -21,12 +21,10 @@ function downsampleBuffer(buffer: Float32Array, inputRate: number, outputRate: n
       accum += buffer[j];
       count++;
     }
-    // Handle edge case
     if (count === 0 && offsetBuffer < buffer.length) {
        accum = buffer[offsetBuffer];
        count = 1;
     }
-
     result[i] = count > 0 ? accum / count : 0;
   }
   return result;
@@ -89,7 +87,6 @@ const TrafficAssistant: React.FC = () => {
   const [isActive, setIsActive] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  // Changed error type to simple string to avoid complex UI rendering issues
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState('Desconectado');
   const [showSuccessBadge, setShowSuccessBadge] = useState(false);
@@ -103,10 +100,17 @@ const TrafficAssistant: React.FC = () => {
   const nextStartTimeRef = useRef<number>(0);
   const sourceNodesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
   const activeStateRef = useRef(false);
+  const retryTimeoutRef = useRef<any>(null);
 
-  // Sync state with ref for callbacks
+  const MAX_RETRIES = 3; // Límite de intentos para evitar bucle infinito
+
   useEffect(() => {
     activeStateRef.current = isActive;
+    // Cleanup timeout on unmount or uncheck
+    if (!isActive && retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = null;
+    }
   }, [isActive]);
 
   const SYSTEM_INSTRUCTION = `
@@ -161,15 +165,21 @@ const TrafficAssistant: React.FC = () => {
   };
 
   const getApiKey = () => {
-    // Falls back to hardcoded key if env var is missing
     return process.env.API_KEY || "AIzaSyCYZm2lUlqvPfz34PHocEmqYKiLnX0__pU";
   };
 
   const startSession = async () => {
-    // Clear any previous error on retry
+    // Si ya superamos los intentos, no seguimos (Rompe el bucle)
+    if (retryCount >= MAX_RETRIES) {
+        setStatusMessage('Servicio no disponible.');
+        setError('No se pudo establecer conexión segura.');
+        setIsConnected(false);
+        return;
+    }
+
     setError(null);
     setShowSuccessBadge(false);
-    setStatusMessage(retryCount > 0 ? `Reconectando (${retryCount})...` : 'Iniciando sistemas...');
+    setStatusMessage(retryCount > 0 ? `Reconectando (Intento ${retryCount}/${MAX_RETRIES})...` : 'Iniciando sistemas...');
 
     const apiKey = getApiKey();
     
@@ -178,12 +188,11 @@ const TrafficAssistant: React.FC = () => {
         return;
     }
 
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-       setError('Sin acceso al micrófono.');
-       return;
-    }
-
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+         throw new Error('Sin acceso al micrófono.');
+      }
+
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       const inputCtx = new AudioContextClass();
       const outputCtx = new AudioContextClass();
@@ -220,9 +229,9 @@ const TrafficAssistant: React.FC = () => {
         },
         callbacks: {
           onopen: () => {
-            console.log('Gemini Live Connected');
+            console.log('Gemini Connected');
             setIsConnected(true);
-            setRetryCount(0); // Reset retries on success
+            setRetryCount(0); // Éxito: reiniciamos contador
             setStatusMessage('En línea. Escuchando...');
             setShowSuccessBadge(true);
             setTimeout(() => setShowSuccessBadge(false), 3000);
@@ -250,7 +259,7 @@ const TrafficAssistant: React.FC = () => {
             source.connect(processor);
             processor.connect(inputAudioContextRef.current.destination);
 
-            // Wake up model
+            // Wake up
             setTimeout(() => {
                 try {
                   const silenceFrame = new Float32Array(16000); 
@@ -267,21 +276,13 @@ const TrafficAssistant: React.FC = () => {
             if (base64Audio && audioContextRef.current) {
               setIsSpeaking(true);
               setStatusMessage('Analizando tráfico...');
-              
               try {
                 const ctx = audioContextRef.current;
                 nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
-                
-                const audioBuffer = await decodeAudioData(
-                  decode(base64Audio),
-                  ctx,
-                  24000
-                );
-
+                const audioBuffer = await decodeAudioData(decode(base64Audio), ctx, 24000);
                 const source = ctx.createBufferSource();
                 source.buffer = audioBuffer;
                 source.connect(ctx.destination);
-                
                 source.onended = () => {
                   sourceNodesRef.current.delete(source);
                   if (sourceNodesRef.current.size === 0) {
@@ -289,13 +290,10 @@ const TrafficAssistant: React.FC = () => {
                     setStatusMessage('Esperando instrucciones...');
                   }
                 };
-
                 source.start(nextStartTimeRef.current);
                 sourceNodesRef.current.add(source);
                 nextStartTimeRef.current += audioBuffer.duration;
-              } catch (err) {
-                console.error("Audio decode error", err);
-              }
+              } catch (err) {}
             }
 
             if (msg.serverContent?.interrupted) {
@@ -306,29 +304,38 @@ const TrafficAssistant: React.FC = () => {
             }
           },
           onclose: (e: CloseEvent) => {
-            console.log('Gemini Disconnected Code:', e.code);
+            console.log('Gemini Close:', e.code);
             cleanupAudio();
             
-            // SILENT AUTO-RETRY LOGIC
-            // Instead of showing an error, we check if the user still wants to be connected
-            if (activeStateRef.current) {
-                setStatusMessage('Señal inestable. Reconectando...');
-                
-                // Exponential backoff for retries
-                const delay = Math.min(2000 + (retryCount * 1000), 10000);
-                setRetryCount(prev => prev + 1);
+            // SI ES ERROR 1008 (Policy), NO REINTENTAR AUTOMÁTICAMENTE PARA EVITAR BUCLE
+            if (e.code === 1008) {
+                setStatusMessage('Acceso Denegado (Dominio no autorizado)');
+                setError('El dominio web no está autorizado en Google Cloud.');
+                setRetryCount(MAX_RETRIES); // Forzamos límite
+                return;
+            }
 
-                setTimeout(() => {
-                    if (activeStateRef.current) {
-                        startSession();
-                    }
-                }, delay);
+            if (activeStateRef.current) {
+                const newRetry = retryCount + 1;
+                
+                if (newRetry < MAX_RETRIES) {
+                    setStatusMessage('Señal inestable. Reconectando...');
+                    setRetryCount(newRetry);
+                    
+                    // Delay exponencial: 2s, 4s, 6s...
+                    const delay = 2000 * newRetry; 
+                    retryTimeoutRef.current = setTimeout(() => {
+                        if (activeStateRef.current) startSession();
+                    }, delay);
+                } else {
+                    setStatusMessage('Conexión perdida.');
+                    setError('No se pudo conectar con el servidor.');
+                }
             }
           },
           onerror: (err) => {
             console.error('Gemini Error:', err);
-            // We do NOT set error state here to avoid breaking the UI. 
-            // We let onclose handle the retry.
+            // No mostramos UI de error aquí, dejamos que onclose maneje el ciclo
           }
         }
       });
@@ -338,10 +345,7 @@ const TrafficAssistant: React.FC = () => {
       if (err.name === 'NotAllowedError') {
           setError('Micrófono bloqueado.');
       } else {
-          // If init fails completely, we try to retry
-          if (activeStateRef.current) {
-             setTimeout(() => startSession(), 3000);
-          }
+         setError('Error de inicialización.');
       }
       cleanupAudio();
     }
@@ -354,11 +358,19 @@ const TrafficAssistant: React.FC = () => {
       cleanupAudio();
       setRetryCount(0);
       setError(null);
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
     } else {
       setIsActive(true);
       activeStateRef.current = true;
+      setRetryCount(0); // Reset manual
       startSession();
     }
+  };
+
+  const handleManualRetry = () => {
+      setRetryCount(0);
+      setError(null);
+      startSession();
   };
 
   return (
@@ -400,12 +412,12 @@ const TrafficAssistant: React.FC = () => {
 
             {error ? (
               <div className="flex flex-col items-center justify-center p-3 bg-red-900/80 rounded-lg border border-red-500/50 w-full animate-in fade-in zoom-in z-20">
-                 <AlertTriangle className="text-red-400 mb-2 shrink-0" size={28} />
-                 <p className="text-red-100 text-xs font-bold text-center mb-3">
+                 <PowerOff className="text-red-400 mb-2 shrink-0" size={24} />
+                 <p className="text-red-100 text-xs font-bold text-center mb-3 leading-tight">
                    {error}
                  </p>
-                 <button onClick={() => { setError(null); startSession(); }} className="bg-white text-red-900 hover:bg-zinc-200 text-[10px] px-4 py-2 rounded-full font-bold transition-colors flex items-center gap-2 shadow-lg">
-                    <RefreshCw size={12} /> REINTENTAR
+                 <button onClick={handleManualRetry} className="bg-white text-red-900 hover:bg-zinc-200 text-[10px] px-4 py-2 rounded-full font-bold transition-colors flex items-center gap-2 shadow-lg">
+                    <RefreshCw size={12} /> REINTENTAR AHORA
                  </button>
               </div>
             ) : (
