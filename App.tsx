@@ -178,6 +178,7 @@ const App: React.FC = () => {
   // --- Booking State ---
   const [bookingData, setBookingData] = useState<BookingData>({
     origin: '',
+    customOriginAddress: '',
     destination: '',
     customAddress: '',
     assistance: [],
@@ -187,13 +188,14 @@ const App: React.FC = () => {
   });
 
   const [useCustomDest, setUseCustomDest] = useState(false);
+  const [useCustomOrigin, setUseCustomOrigin] = useState(false);
   const [simulationActive, setSimulationActive] = useState(false);
   const [confirmation, setConfirmation] = useState<BookingConfirmation | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Set Caldas de Reis as default origin if available
+  // Set Caldas de Reis as default origin if available and not using custom origin
   useEffect(() => {
-    if (!bookingData.origin) {
+    if (!bookingData.origin && !useCustomOrigin) {
         setBookingData(prev => ({ ...prev, origin: 'caldas' }));
     }
   }, []);
@@ -203,9 +205,14 @@ const App: React.FC = () => {
     setBookingData(prev => ({ ...prev, [name]: value }));
     
     // Trigger simulation conditions
-    if (!useCustomDest && ((name === 'origin' && bookingData.destination) || (name === 'destination' && bookingData.origin))) {
-       setSimulationActive(false);
-       setTimeout(() => setSimulationActive(true), 100);
+    const hasOrigin = useCustomOrigin ? bookingData.customOriginAddress : bookingData.origin;
+    const hasDest = useCustomDest ? bookingData.customAddress : bookingData.destination;
+
+    // Small delay to check if both fields have content after update
+    if (hasOrigin && hasDest) {
+        // Debounce simulation slightly
+        setSimulationActive(false);
+        setTimeout(() => setSimulationActive(true), 500);
     }
   };
 
@@ -216,6 +223,17 @@ const App: React.FC = () => {
       ...prev,
       destination: isCustom ? 'custom' : '',
       customAddress: ''
+    }));
+    setSimulationActive(false);
+  };
+
+  const toggleCustomOrigin = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isCustom = e.target.checked;
+    setUseCustomOrigin(isCustom);
+    setBookingData(prev => ({
+      ...prev,
+      origin: isCustom ? 'custom' : '', // Reset or set to custom placeholder
+      customOriginAddress: ''
     }));
     setSimulationActive(false);
   };
@@ -235,7 +253,12 @@ const App: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!bookingData.name || !bookingData.phone) return;
-    if (!bookingData.origin) return;
+    
+    // Validation for Origin
+    if (!useCustomOrigin && !bookingData.origin) return;
+    if (useCustomOrigin && !bookingData.customOriginAddress) return;
+
+    // Validation for Destination
     if (!useCustomDest && !bookingData.destination) return;
     if (useCustomDest && !bookingData.customAddress) return;
 
@@ -246,7 +269,10 @@ const App: React.FC = () => {
       id: randomId,
       data: { 
         ...bookingData,
-        origin: CITIES.find(c => c.id === bookingData.origin)?.name || bookingData.origin,
+        origin: useCustomOrigin 
+          ? 'custom' 
+          : (CITIES.find(c => c.id === bookingData.origin)?.name || bookingData.origin),
+        customOriginAddress: bookingData.customOriginAddress,
         destination: useCustomDest 
           ? 'custom' 
           : (CITIES.find(c => c.id === bookingData.destination)?.name || bookingData.destination),
@@ -610,8 +636,34 @@ const App: React.FC = () => {
 
                 {/* Origin */}
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-400 uppercase tracking-wider">Punto de Recogida</label>
+                  <label className="text-sm font-bold text-gray-400 uppercase tracking-wider flex justify-between items-center">
+                    Punto de Recogida
+                    <label className="flex items-center gap-2 text-xs normal-case font-normal text-yellow-400 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={useCustomOrigin} 
+                        onChange={toggleCustomOrigin}
+                        className="accent-yellow-400 w-4 h-4" 
+                      />
+                      Dirección exacta / Otra
+                    </label>
+                  </label>
                   <div className="relative">
+                    {useCustomOrigin ? (
+                        <>
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
+                        <input
+                          type="text"
+                          name="customOriginAddress"
+                          value={bookingData.customOriginAddress}
+                          onChange={handleInputChange}
+                          placeholder="Ej: Hotel Balneario, Caldas..."
+                          className="w-full bg-zinc-900 border border-zinc-700 text-white pl-12 pr-4 py-4 rounded-xl focus:outline-none focus:border-yellow-400"
+                          required
+                        />
+                      </>
+                    ) : (
+                    <>
                     <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500" size={18} />
                     <select 
                       name="origin" 
@@ -627,6 +679,8 @@ const App: React.FC = () => {
                         </option>
                       ))}
                     </select>
+                    </>
+                    )}
                   </div>
                 </div>
 
@@ -740,6 +794,8 @@ const App: React.FC = () => {
               isSimulating={simulationActive}
               isCustomDestination={useCustomDest}
               customAddress={bookingData.customAddress}
+              isCustomOrigin={useCustomOrigin}
+              customOriginAddress={bookingData.customOriginAddress}
             />
           </div>
 

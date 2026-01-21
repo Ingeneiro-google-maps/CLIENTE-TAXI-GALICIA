@@ -6,7 +6,8 @@ export interface City {
 }
 
 export interface BookingData {
-  origin: string;
+  origin: string; // This will hold the city ID OR 'custom'
+  customOriginAddress?: string; // Specific address if origin is custom
   destination: string; // This will hold the city ID OR 'custom'
   customAddress?: string; // Specific address if destination is custom
   assistance: string[];

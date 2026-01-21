@@ -8,6 +8,8 @@ interface GaliciaMapProps {
   isSimulating: boolean;
   isCustomDestination: boolean;
   customAddress?: string;
+  isCustomOrigin: boolean;
+  customOriginAddress?: string;
 }
 
 const GaliciaMap: React.FC<GaliciaMapProps> = ({ 
@@ -15,7 +17,9 @@ const GaliciaMap: React.FC<GaliciaMapProps> = ({
   destinationId, 
   isSimulating, 
   isCustomDestination,
-  customAddress 
+  customAddress,
+  isCustomOrigin,
+  customOriginAddress
 }) => {
   
   const mapUrl = useMemo(() => {
@@ -25,19 +29,28 @@ const GaliciaMap: React.FC<GaliciaMapProps> = ({
     // Base URL for Google Maps Embed
     const baseUrl = "https://maps.google.com/maps";
 
-    if (isSimulating && originCity) {
+    if (isSimulating) {
       // Determine destination string
       let destinationQuery = "";
-      
+      let originQuery = "";
+
+      // Origin Logic
+      if (isCustomOrigin && customOriginAddress) {
+         originQuery = customOriginAddress;
+      } else if (originCity) {
+         originQuery = originCity.name + ", Galicia, Spain";
+      }
+
+      // Destination Logic
       if (isCustomDestination && customAddress) {
         destinationQuery = customAddress;
       } else if (destCity) {
         destinationQuery = destCity.name + ", Galicia, Spain";
       }
 
-      if (destinationQuery) {
+      if (destinationQuery && originQuery) {
         // Mode: Directions (saddr = Source Address, daddr = Destination Address)
-        const saddr = encodeURIComponent(originCity.name + ", Galicia, Spain");
+        const saddr = encodeURIComponent(originQuery);
         const daddr = encodeURIComponent(destinationQuery);
         return `${baseUrl}?saddr=${saddr}&daddr=${daddr}&output=embed&t=m`; // t=m for standard map
       }
@@ -47,7 +60,7 @@ const GaliciaMap: React.FC<GaliciaMapProps> = ({
     const center = encodeURIComponent("Caldas de Reis, Pontevedra, España");
     return `${baseUrl}?q=${center}&z=10&output=embed&t=m`;
 
-  }, [originId, destinationId, isSimulating, isCustomDestination, customAddress]);
+  }, [originId, destinationId, isSimulating, isCustomDestination, customAddress, isCustomOrigin, customOriginAddress]);
 
   return (
     <div className="relative w-full h-[500px] md:h-[700px] bg-zinc-900 rounded-xl overflow-hidden border border-zinc-700 shadow-2xl group">

@@ -18,6 +18,11 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
     ? `${confirmation.data.customAddress} (Dirección Exacta)`
     : confirmation.data.destination;
 
+  // Logic to show correct origin text
+  const originText = confirmation.data.origin === 'custom' 
+    ? `${confirmation.data.customOriginAddress} (Dirección Exacta)`
+    : confirmation.data.origin;
+
   // Map assistance IDs to readable labels
   const assistanceLabels = confirmation.data.assistance.map(id => {
     const option = ASSISTANCE_OPTIONS.find(opt => opt.id === id);
@@ -35,7 +40,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
     `👤 *CLIENTE:* ${confirmation.data.name}\n` +
     `📱 *TELÉFONO:* ${confirmation.data.phone}\n` +
     `--------------------------------\n` +
-    `📍 *DESDE:* ${confirmation.data.origin}\n`+
+    `📍 *DESDE:* ${originText}\n`+
     `🏁 *HASTA:* ${destinationText}\n` +
     `--------------------------------\n` +
     `ℹ️ *INFO:* ${assistanceText}\n` +
@@ -108,7 +113,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ isOpen, onClose, confirmati
                     <div className="w-full">
                         <p className="text-xs text-zinc-500 uppercase font-bold">Trayecto</p>
                         <div className="flex justify-between items-center mt-1">
-                             <span className="text-yellow-500 font-bold">{confirmation.data.origin}</span>
+                             <span className="text-yellow-500 font-bold">{originText}</span>
                         </div>
                         <div className="pl-1 border-l-2 border-zinc-800 ml-1 h-3"></div>
                          <div className="flex justify-between items-center">
