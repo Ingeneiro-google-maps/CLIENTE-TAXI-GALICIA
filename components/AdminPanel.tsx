@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -21,14 +21,30 @@ const SECTION_LABELS: Record<string, string> = {
 };
 
 type DbStatus = 'idle' | 'connecting' | 'creating' | 'ready' | 'error' | 'saving';
+const ADMIN_PASSWORD = "8069987Pt";
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig, onSave }) => {
+  // --- Auth State ---
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [authError, setAuthError] = useState(false);
+
+  // --- Panel State ---
   const [formData, setFormData] = useState<SiteConfig>(currentConfig);
   const [dbUrl, setDbUrl] = useState('');
   const [dbStatus, setDbStatus] = useState<DbStatus>('idle');
   const [dbMessage, setDbMessage] = useState('');
   const [configSize, setConfigSize] = useState(0);
   const timeoutRef = useRef<any>(null);
+
+  // Reset Auth on Close
+  useEffect(() => {
+    if (!isOpen) {
+        setIsAuthenticated(false);
+        setPasswordInput('');
+        setAuthError(false);
+    }
+  }, [isOpen]);
 
   // Sync internal state if currentConfig changes
   useEffect(() => {
@@ -68,6 +84,79 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   }, [formData]);
 
   if (!isOpen) return null;
+
+  // --- AUTH HANDLE ---
+  const handleLogin = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (passwordInput === ADMIN_PASSWORD) {
+          setIsAuthenticated(true);
+          setAuthError(false);
+      } else {
+          setAuthError(true);
+          setPasswordInput('');
+      }
+  };
+
+  // --- LOGIN SCREEN RENDER ---
+  if (!isAuthenticated) {
+      return (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in zoom-in duration-300">
+             <div className="w-full max-w-md bg-zinc-900 border border-yellow-500/50 rounded-2xl shadow-2xl p-8 relative overflow-hidden">
+                 {/* Decorative */}
+                 <div className="absolute top-0 left-0 w-full h-1 bg-yellow-500 shadow-[0_0_20px_rgba(250,204,21,0.5)]"></div>
+                 
+                 <button onClick={onClose} className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors">
+                     <X size={24} />
+                 </button>
+
+                 <div className="flex flex-col items-center text-center mb-8">
+                     <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center border border-zinc-800 mb-4 shadow-inner">
+                         <Lock size={32} className="text-yellow-500" />
+                     </div>
+                     <h2 className="text-2xl font-black text-white uppercase tracking-tight">Acceso Restringido</h2>
+                     <p className="text-zinc-400 text-sm mt-2">Introduce la clave de administrador para editar la web.</p>
+                 </div>
+
+                 <form onSubmit={handleLogin} className="space-y-6">
+                     <div className="space-y-2">
+                         <div className="relative">
+                             <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                             <input 
+                                type="password" 
+                                autoFocus
+                                placeholder="Contraseña..." 
+                                className={`w-full bg-black border ${authError ? 'border-red-500 animate-shake' : 'border-zinc-700 focus:border-yellow-500'} rounded-xl py-4 pl-12 pr-4 text-white placeholder-zinc-600 outline-none transition-all`}
+                                value={passwordInput}
+                                onChange={(e) => {
+                                    setPasswordInput(e.target.value);
+                                    if(authError) setAuthError(false);
+                                }}
+                             />
+                         </div>
+                         {authError && (
+                             <p className="text-red-500 text-xs font-bold flex items-center justify-center gap-1 animate-pulse">
+                                 <ShieldAlert size={12} /> Contraseña incorrecta
+                             </p>
+                         )}
+                     </div>
+
+                     <button 
+                        type="submit" 
+                        className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-4 rounded-xl flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-[0_0_20px_rgba(250,204,21,0.2)]"
+                     >
+                         ENTRAR AL PANEL <ArrowRight size={20} />
+                     </button>
+                 </form>
+                 
+                 <div className="mt-6 text-center">
+                     <p className="text-[10px] text-zinc-600 font-mono">ID: SYSTEM_SECURE_V1</p>
+                 </div>
+             </div>
+        </div>
+      );
+  }
+
+  // --- MAIN ADMIN LOGIC ---
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
