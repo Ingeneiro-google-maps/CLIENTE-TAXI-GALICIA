@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -467,6 +467,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
             <div className="space-y-2">
                 <label className="text-xs font-bold text-zinc-400">Subtítulo</label>
                 <textarea name="heroSubtitle" value={formData.heroSubtitle} onChange={handleChange} rows={2} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none resize-none" />
+            </div>
+
+            {/* Transfers Text Editing */}
+            <div className="space-y-4 border border-zinc-800 p-4 rounded-xl bg-zinc-950/50">
+                <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
+                   <Car size={16} /> Textos Sección Traslados
+                </h3>
+                
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-zinc-400">Título Principal de la Sección</label>
+                    <input type="text" name="transfersTitle" value={formData.transfersTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 mt-4">
+                    {/* Airport */}
+                    <div className="bg-zinc-900 p-3 rounded-lg border border-zinc-800">
+                        <label className="text-xs font-bold text-yellow-500 mb-2 block">1. Aeropuerto</label>
+                        <input type="text" name="transferAirportTitle" value={formData.transferAirportTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm mb-2" placeholder="Título" />
+                        <textarea name="transferAirportDesc" value={formData.transferAirportDesc} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs resize-none" placeholder="Descripción" />
+                    </div>
+
+                    {/* Health */}
+                    <div className="bg-zinc-900 p-3 rounded-lg border border-zinc-800">
+                        <label className="text-xs font-bold text-yellow-500 mb-2 block">2. Centros de Salud</label>
+                        <input type="text" name="transferHealthTitle" value={formData.transferHealthTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm mb-2" placeholder="Título" />
+                        <textarea name="transferHealthDesc" value={formData.transferHealthDesc} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs resize-none" placeholder="Descripción" />
+                    </div>
+
+                    {/* Private */}
+                    <div className="bg-zinc-900 p-3 rounded-lg border border-zinc-800">
+                        <label className="text-xs font-bold text-yellow-500 mb-2 block">3. Privados / Otros</label>
+                        <input type="text" name="transferPrivateTitle" value={formData.transferPrivateTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm mb-2" placeholder="Título" />
+                        <textarea name="transferPrivateDesc" value={formData.transferPrivateDesc} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs resize-none" placeholder="Descripción" />
+                    </div>
+                </div>
             </div>
 
             {/* Fleet */}
