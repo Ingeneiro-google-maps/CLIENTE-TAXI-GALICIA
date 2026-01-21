@@ -52,6 +52,7 @@ export const DEFAULT_CONFIG: SiteConfig = {
   // General
   enableAssistant: true,
   geminiApiKey: "", // User must provide this in Admin Panel to fix Domain Errors
+  demoMode: false, // Watermark disabled by default
 
   // Default order: Services -> Transfers -> Fleet -> Reservation
   sectionOrder: ['services', 'transfers', 'fleet', 'reservation'],

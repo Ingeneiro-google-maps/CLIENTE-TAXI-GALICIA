@@ -6,6 +6,7 @@ import BookingModal from './components/BookingModal';
 import AdminPanel from './components/AdminPanel';
 import InstallPWA from './components/InstallPWA';
 import TrafficAssistant from './components/TrafficAssistant';
+import Watermark from './components/Watermark';
 import { dbService } from './services/db';
 import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock, Wifi, Activity, HeartPulse, Loader2 } from 'lucide-react';
 
@@ -651,6 +652,9 @@ const App: React.FC = () => {
       
       {/* Install Prompt for Mobile/PWA */}
       <InstallPWA />
+
+      {/* --- WATERMARK DEMO MODE --- */}
+      {config.demoMode && <Watermark />}
 
       {/* --- TRAFFIC ASSISTANT (CONDITIONAL RENDER) --- */}
       {config.enableAssistant && <TrafficAssistant apiKey={config.geminiApiKey} />}
