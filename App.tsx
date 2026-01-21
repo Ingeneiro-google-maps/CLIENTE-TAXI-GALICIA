@@ -478,14 +478,14 @@ const App: React.FC = () => {
               <h2 className="text-3xl font-black mb-12 uppercase text-white">
                   {config.contactTitle}
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
                   {/* Phone 1 */}
                   {config.contactPhone1 && (
                       <a href={`tel:${config.contactPhone1.replace(/\s+/g, '')}`} className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 hover:border-yellow-400 group transition-all">
                           <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-yellow-400 transition-colors">
                               <Phone size={24} className="text-white group-hover:text-black" />
                           </div>
-                          <p className="text-zinc-400 text-sm uppercase font-bold mb-1">Teléfono Principal</p>
+                          <p className="text-zinc-400 text-sm uppercase font-bold mb-1">{config.contactPhone1Label || "Teléfono Principal"}</p>
                           <p className="text-xl font-bold text-white group-hover:text-yellow-400">{config.contactPhone1}</p>
                       </a>
                   )}
@@ -496,7 +496,7 @@ const App: React.FC = () => {
                           <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-yellow-400 transition-colors">
                               <Smartphone size={24} className="text-white group-hover:text-black" />
                           </div>
-                          <p className="text-zinc-400 text-sm uppercase font-bold mb-1">Teléfono Secundario</p>
+                          <p className="text-zinc-400 text-sm uppercase font-bold mb-1">{config.contactPhone2Label || "Teléfono Secundario"}</p>
                           <p className="text-xl font-bold text-white group-hover:text-yellow-400">{config.contactPhone2}</p>
                       </a>
                   )}
@@ -508,8 +508,19 @@ const App: React.FC = () => {
                               <Mail size={24} className="text-white group-hover:text-black" />
                           </div>
                           <p className="text-zinc-400 text-sm uppercase font-bold mb-1">Email</p>
-                          <p className="text-lg font-bold text-white break-words group-hover:text-yellow-400">{config.contactEmail}</p>
+                          <p className="text-sm font-bold text-white break-words group-hover:text-yellow-400">{config.contactEmail}</p>
                       </a>
+                  )}
+
+                   {/* Address (New) */}
+                  {config.contactAddress && (
+                      <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 hover:border-yellow-400 group transition-all">
+                          <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-yellow-400 transition-colors">
+                              <MapPin size={24} className="text-white group-hover:text-black" />
+                          </div>
+                          <p className="text-zinc-400 text-sm uppercase font-bold mb-1">Dirección / Base</p>
+                          <p className="text-sm font-bold text-white break-words group-hover:text-yellow-400">{config.contactAddress}</p>
+                      </div>
                   )}
               </div>
           </div>

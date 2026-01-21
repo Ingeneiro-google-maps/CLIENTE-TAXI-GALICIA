@@ -73,8 +73,11 @@ export interface SiteConfig {
   // New: Contact Section
   contactTitle: string;
   contactPhone1: string;
+  contactPhone1Label: string; // Nuevo: Etiqueta (Ej: Oficina)
   contactPhone2: string;
+  contactPhone2Label: string; // Nuevo: Etiqueta (Ej: Urgencias)
   contactEmail: string;
+  contactAddress: string; // Nuevo: Dirección física
 
   // New: Fleet Section
   fleetTitle: string;

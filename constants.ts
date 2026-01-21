@@ -73,8 +73,11 @@ export const DEFAULT_CONFIG: SiteConfig = {
   // Contact Section
   contactTitle: "Contáctanos",
   contactPhone1: "+34 600 000 000",
+  contactPhone1Label: "Teléfono Principal",
   contactPhone2: "",
+  contactPhone2Label: "Urgencias / 24H",
   contactEmail: "info@taxiverocaldas.com",
+  contactAddress: "Caldas de Reis, Pontevedra, Galicia",
 
   // Fleet
   fleetTitle: "Nuestra Flota",

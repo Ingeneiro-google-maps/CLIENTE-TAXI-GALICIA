@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight, MapPin } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -773,19 +773,57 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                </div>
                
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                      <label className="text-xs font-bold text-zinc-400">Teléfono 1 (Principal)</label>
-                      <input type="text" name="contactPhone1" value={formData.contactPhone1 || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                  {/* Phone 1 Block */}
+                  <div className="space-y-2 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+                      <label className="text-xs font-bold text-yellow-500 uppercase">Teléfono 1 (Principal)</label>
+                      <input 
+                         type="text" 
+                         name="contactPhone1Label" 
+                         value={formData.contactPhone1Label || ''} 
+                         onChange={handleChange} 
+                         placeholder="Etiqueta (Ej: Oficina)"
+                         className="w-full bg-black border border-zinc-700 rounded p-2 text-white text-xs mb-2 focus:border-yellow-500 outline-none" 
+                      />
+                      <input 
+                        type="text" 
+                        name="contactPhone1" 
+                        value={formData.contactPhone1 || ''} 
+                        onChange={handleChange} 
+                        placeholder="Número (+34...)"
+                        className="w-full bg-black border border-zinc-700 rounded p-2 text-white text-sm focus:border-yellow-500 outline-none" 
+                      />
                   </div>
-                  <div className="space-y-2">
-                      <label className="text-xs font-bold text-zinc-400">Teléfono 2 (Secundario)</label>
-                      <input type="text" name="contactPhone2" value={formData.contactPhone2 || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+
+                  {/* Phone 2 Block */}
+                  <div className="space-y-2 p-3 bg-zinc-900/50 rounded-lg border border-zinc-800">
+                      <label className="text-xs font-bold text-yellow-500 uppercase">Teléfono 2 (Secundario)</label>
+                      <input 
+                         type="text" 
+                         name="contactPhone2Label" 
+                         value={formData.contactPhone2Label || ''} 
+                         onChange={handleChange} 
+                         placeholder="Etiqueta (Ej: Urgencias)"
+                         className="w-full bg-black border border-zinc-700 rounded p-2 text-white text-xs mb-2 focus:border-yellow-500 outline-none" 
+                      />
+                      <input 
+                        type="text" 
+                        name="contactPhone2" 
+                        value={formData.contactPhone2 || ''} 
+                        onChange={handleChange} 
+                        placeholder="Número (+34...)"
+                        className="w-full bg-black border border-zinc-700 rounded p-2 text-white text-sm focus:border-yellow-500 outline-none" 
+                      />
                   </div>
                </div>
 
                <div className="space-y-2">
                    <label className="text-xs font-bold text-zinc-400">Email de Contacto</label>
                    <input type="text" name="contactEmail" value={formData.contactEmail || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+               </div>
+
+               <div className="space-y-2">
+                   <label className="text-xs font-bold text-zinc-400">Dirección Física (Opcional)</label>
+                   <input type="text" name="contactAddress" value={formData.contactAddress || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" placeholder="Ej: Rúa Real, Caldas de Reis..." />
                </div>
             </div>
 
