@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CITIES, ASSISTANCE_OPTIONS, DEFAULT_CONFIG } from './constants';
-import { BookingData, BookingConfirmation, SiteConfig } from './types';
+import { BookingData, BookingConfirmation, SiteConfig, FleetItem } from './types';
 import GaliciaMap from './components/GaliciaMap';
 import BookingModal from './components/BookingModal';
 import AdminPanel from './components/AdminPanel';
@@ -8,7 +8,7 @@ import InstallPWA from './components/InstallPWA';
 import TrafficAssistant from './components/TrafficAssistant';
 import Watermark from './components/Watermark';
 import { dbService } from './services/db';
-import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock, Wifi, Activity, HeartPulse, Loader2, Bus, Mail, Users } from 'lucide-react';
+import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock, Wifi, Activity, HeartPulse, Loader2, Bus, Mail, Users, ZoomIn, X } from 'lucide-react';
 
 const App: React.FC = () => {
   // --- Configuration State ---
@@ -22,6 +22,9 @@ const App: React.FC = () => {
     width: typeof window !== 'undefined' ? window.innerWidth : 1920, 
     height: typeof window !== 'undefined' ? window.innerHeight : 1080 
   });
+
+  // State for Fleet Lightbox (Expanded Image)
+  const [selectedFleetItem, setSelectedFleetItem] = useState<FleetItem | null>(null);
 
   // Load Config from Neon Database on Mount
   useEffect(() => {
@@ -387,8 +390,11 @@ const App: React.FC = () => {
                     </div>
                 </div>
                 <div className="w-full md:w-1/2">
-                    <div className="relative rounded-3xl overflow-hidden border-4 border-zinc-800 shadow-2xl group">
-                        <div className="absolute inset-0 bg-yellow-400/20 mix-blend-overlay z-10"></div>
+                    <div className="relative rounded-3xl overflow-hidden border-4 border-zinc-800 shadow-2xl group cursor-pointer" onClick={() => setSelectedFleetItem({ id: 'bus', title: config.busTitle, description: config.busDesc, imageUrl: config.busImageUrl })}>
+                        <div className="absolute inset-0 bg-yellow-400/20 mix-blend-overlay z-10 pointer-events-none"></div>
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                           <ZoomIn className="text-white w-12 h-12 drop-shadow-lg" />
+                        </div>
                         <img 
                             src={getOptimizedImage(config.busImageUrl)} 
                             alt="Autobús Grupo" 
@@ -470,7 +476,11 @@ const App: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {config.fleetItems && config.fleetItems.length > 0 ? (
                 config.fleetItems.map((item) => (
-                  <div key={item.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-yellow-500/50 transition-all group">
+                  <div 
+                    key={item.id} 
+                    className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-yellow-500/50 transition-all group cursor-pointer"
+                    onClick={() => setSelectedFleetItem(item)}
+                  >
                       <div className="h-56 overflow-hidden relative">
                         <img 
                           src={getOptimizedImage(item.imageUrl)} 
@@ -481,9 +491,18 @@ const App: React.FC = () => {
                           }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 to-transparent opacity-60"></div>
+                        
+                        {/* Zoom Icon overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <div className="bg-black/50 p-3 rounded-full backdrop-blur-sm border border-yellow-400/50">
+                                <ZoomIn className="text-yellow-400" size={24} />
+                            </div>
+                        </div>
                       </div>
                       <div className="p-8">
-                        <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+                        <h3 className="text-xl font-bold text-white mb-3 flex justify-between items-center">
+                            {item.title}
+                        </h3>
                         <p className="text-gray-400 text-sm leading-relaxed">{item.description}</p>
                       </div>
                   </div>
@@ -906,6 +925,77 @@ const App: React.FC = () => {
         currentConfig={config}
         onSave={handleSaveConfig}
       />
+
+      {/* --- FLEET IMAGE LIGHTBOX --- */}
+      {selectedFleetItem && (
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-10 animate-fade-in-up">
+            <button 
+                onClick={() => setSelectedFleetItem(null)}
+                className="absolute top-6 right-6 text-white/50 hover:text-white bg-white/10 p-3 rounded-full transition-all hover:bg-white/20 z-50"
+            >
+                <X size={32} />
+            </button>
+
+            <div className="max-w-6xl w-full flex flex-col md:flex-row gap-8 items-center justify-center h-full">
+                {/* Image Container */}
+                <div className="w-full md:w-2/3 h-[50vh] md:h-[80vh] relative rounded-3xl overflow-hidden shadow-2xl border border-zinc-800 group">
+                    <img 
+                        src={getOptimizedImage(selectedFleetItem.imageUrl)} 
+                        alt={selectedFleetItem.title} 
+                        className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                </div>
+
+                {/* Info Container */}
+                <div className="w-full md:w-1/3 text-left space-y-6">
+                    <div>
+                        <div className="inline-block px-4 py-1 rounded-full border border-yellow-400 text-yellow-400 text-xs font-bold uppercase tracking-widest mb-4">
+                            Vehículo Oficial
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-black text-white uppercase leading-tight mb-4">
+                            {selectedFleetItem.title}
+                        </h2>
+                        <div className="w-20 h-2 bg-yellow-400 rounded-full mb-6"></div>
+                        <p className="text-lg text-gray-300 leading-relaxed font-light">
+                            {selectedFleetItem.description}
+                        </p>
+                    </div>
+
+                    <div className="pt-8 border-t border-zinc-800 grid grid-cols-2 gap-4">
+                        <div className="flex items-center gap-3 text-zinc-400">
+                            <ShieldCheck size={20} className="text-yellow-500" />
+                            <span className="text-sm">Seguridad Plus</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-zinc-400">
+                            <Briefcase size={20} className="text-yellow-500" />
+                            <span className="text-sm">Gran Capacidad</span>
+                        </div>
+                         <div className="flex items-center gap-3 text-zinc-400">
+                            <Wifi size={20} className="text-yellow-500" />
+                            <span className="text-sm">WiFi a bordo</span>
+                        </div>
+                         <div className="flex items-center gap-3 text-zinc-400">
+                            <Star size={20} className="text-yellow-500" />
+                            <span className="text-sm">Confort Total</span>
+                        </div>
+                    </div>
+
+                    <button 
+                        onClick={() => {
+                            setSelectedFleetItem(null);
+                            const reservationSection = document.getElementById('reservation');
+                            if (reservationSection) reservationSection.scrollIntoView({ behavior: 'smooth' });
+                        }}
+                        className="w-full mt-8 bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg"
+                    >
+                        <Car size={20} />
+                        RESERVAR ESTE VEHÍCULO
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
       
     </div>
   );

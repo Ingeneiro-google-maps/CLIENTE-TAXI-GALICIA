@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -560,22 +560,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
             {/* Fleet */}
             <div className="space-y-4">
                <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
-                 <h3 className="text-yellow-400 font-bold uppercase text-sm">Flota</h3>
+                 <h3 className="text-yellow-400 font-bold uppercase text-sm flex items-center gap-2">
+                    <ImageIcon size={16} /> Flota (Imágenes)
+                 </h3>
                  <button type="button" onClick={addFleetItem} className="flex items-center gap-1 text-xs bg-yellow-500 text-black px-3 py-1 rounded font-bold"><Plus size={14} /> Añadir</button>
                </div>
-               <div className="space-y-4">
+               <div className="space-y-6">
                  {formData.fleetItems?.map((item, index) => (
                     <div key={item.id} className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 relative group">
-                        <button type="button" onClick={() => removeFleetItem(index)} className="absolute top-2 right-2 text-red-500 p-2 hover:bg-red-900/30 rounded"><Trash2 size={16} /></button>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                           <div className="space-y-2">
-                                <input type="text" value={item.title} onChange={(e) => handleFleetChange(index, 'title', e.target.value)} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm" placeholder="Modelo" />
-                                <textarea value={item.description} onChange={(e) => handleFleetChange(index, 'description', e.target.value)} rows={2} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm resize-none" placeholder="Descripción" />
+                        <button type="button" onClick={() => removeFleetItem(index)} className="absolute top-2 right-2 text-red-500 p-2 hover:bg-red-900/30 rounded z-10"><Trash2 size={16} /></button>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           {/* Left: Inputs */}
+                           <div className="space-y-3">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] text-zinc-500 font-bold uppercase">Nombre del Modelo</label>
+                                    <input type="text" value={item.title} onChange={(e) => handleFleetChange(index, 'title', e.target.value)} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm focus:border-yellow-500 outline-none" placeholder="Ej: Mercedes Clase E" />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] text-zinc-500 font-bold uppercase">Descripción</label>
+                                    <textarea value={item.description} onChange={(e) => handleFleetChange(index, 'description', e.target.value)} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm resize-none focus:border-yellow-500 outline-none" placeholder="Características..." />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] text-zinc-500 font-bold uppercase">Enlace Imagen (URL)</label>
+                                    <input type="text" value={item.imageUrl} onChange={(e) => handleFleetChange(index, 'imageUrl', e.target.value)} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs font-mono focus:border-yellow-500 outline-none" placeholder="https://..." />
+                                </div>
                            </div>
-                           <div className="space-y-2">
-                                <label className="text-[10px] text-zinc-500 block">URL Imagen (No subir archivo)</label>
-                                <input type="text" value={item.imageUrl} onChange={(e) => handleFleetChange(index, 'imageUrl', e.target.value)} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs font-mono" placeholder="https://..." />
-                                {item.imageUrl && <img src={getPreviewImage(item.imageUrl)} alt="Preview" className="h-16 w-full object-cover rounded border border-zinc-800 opacity-50" />}
+                           
+                           {/* Right: Real Preview */}
+                           <div className="space-y-1">
+                                <label className="text-[10px] text-yellow-500 font-bold uppercase flex items-center gap-1">
+                                    <PlaySquare size={10} /> Vista Previa Real (Recorte)
+                                </label>
+                                <div className="relative w-full h-48 bg-zinc-900 rounded-lg overflow-hidden border border-zinc-700 shadow-inner group-hover:border-yellow-500/50 transition-colors">
+                                    {item.imageUrl ? (
+                                        <>
+                                            <img src={getPreviewImage(item.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 to-transparent opacity-60 pointer-events-none"></div>
+                                            <div className="absolute bottom-4 left-4 right-4 pointer-events-none">
+                                                <p className="text-white font-bold text-sm truncate">{item.title || 'Título'}</p>
+                                                <p className="text-gray-400 text-[10px] truncate">{item.description || 'Descripción...'}</p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center h-full text-zinc-600">
+                                            <ImageIcon size={32} />
+                                            <span className="text-xs mt-2">Sin imagen</span>
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="text-[10px] text-zinc-500 text-center">Así se verá en la web (recortado a este tamaño).</p>
                            </div>
                         </div>
                     </div>
