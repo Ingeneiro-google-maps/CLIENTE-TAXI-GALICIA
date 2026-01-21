@@ -8,7 +8,7 @@ import InstallPWA from './components/InstallPWA';
 import TrafficAssistant from './components/TrafficAssistant';
 import Watermark from './components/Watermark';
 import { dbService } from './services/db';
-import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock, Wifi, Activity, HeartPulse, Loader2 } from 'lucide-react';
+import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock, Wifi, Activity, HeartPulse, Loader2, Bus, Mail, Users } from 'lucide-react';
 
 const App: React.FC = () => {
   // --- Configuration State ---
@@ -362,6 +362,93 @@ const App: React.FC = () => {
     </div>
   );
 
+  // 5. Bus / Groups Section (NEW)
+  const BusSection = (
+    <div key="bus" className="bg-zinc-950 py-20 border-b border-zinc-800">
+        <div className="container mx-auto px-6">
+            <div className="flex flex-col md:flex-row items-center gap-12">
+                <div className="w-full md:w-1/2 space-y-6">
+                    <div className="inline-block p-3 rounded-xl bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 mb-2">
+                        <Bus size={32} />
+                    </div>
+                    <h2 className="text-3xl md:text-5xl font-black uppercase text-white leading-tight">
+                        {config.busTitle}
+                    </h2>
+                    <p className="text-gray-400 text-lg leading-relaxed">
+                        {config.busDesc}
+                    </p>
+                    <div className="flex gap-4 pt-4">
+                        <div className="flex items-center gap-2 text-sm text-zinc-300">
+                            <Users size={18} className="text-yellow-400"/> Grupos Grandes
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-zinc-300">
+                            <Star size={18} className="text-yellow-400"/> Confort Total
+                        </div>
+                    </div>
+                </div>
+                <div className="w-full md:w-1/2">
+                    <div className="relative rounded-3xl overflow-hidden border-4 border-zinc-800 shadow-2xl group">
+                        <div className="absolute inset-0 bg-yellow-400/20 mix-blend-overlay z-10"></div>
+                        <img 
+                            src={getOptimizedImage(config.busImageUrl)} 
+                            alt="Autobús Grupo" 
+                            className="w-full h-[400px] object-cover transform group-hover:scale-105 transition-transform duration-700"
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.pexels.com/photos/385997/pexels-photo-385997.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1';
+                            }}
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+  );
+
+  // 6. Contact Section (NEW)
+  const ContactSection = (
+      <div key="contact" className="bg-black py-20 border-b border-zinc-800">
+          <div className="container mx-auto px-6 text-center">
+              <h2 className="text-3xl font-black mb-12 uppercase text-white">
+                  {config.contactTitle}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+                  {/* Phone 1 */}
+                  {config.contactPhone1 && (
+                      <a href={`tel:${config.contactPhone1.replace(/\s+/g, '')}`} className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 hover:border-yellow-400 group transition-all">
+                          <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-yellow-400 transition-colors">
+                              <Phone size={24} className="text-white group-hover:text-black" />
+                          </div>
+                          <p className="text-zinc-400 text-sm uppercase font-bold mb-1">Teléfono Principal</p>
+                          <p className="text-xl font-bold text-white group-hover:text-yellow-400">{config.contactPhone1}</p>
+                      </a>
+                  )}
+
+                   {/* Phone 2 */}
+                   {config.contactPhone2 && (
+                      <a href={`tel:${config.contactPhone2.replace(/\s+/g, '')}`} className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 hover:border-yellow-400 group transition-all">
+                          <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-yellow-400 transition-colors">
+                              <Smartphone size={24} className="text-white group-hover:text-black" />
+                          </div>
+                          <p className="text-zinc-400 text-sm uppercase font-bold mb-1">Teléfono Secundario</p>
+                          <p className="text-xl font-bold text-white group-hover:text-yellow-400">{config.contactPhone2}</p>
+                      </a>
+                  )}
+
+                  {/* Email */}
+                  {config.contactEmail && (
+                      <a href={`mailto:${config.contactEmail}`} className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 hover:border-yellow-400 group transition-all">
+                          <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-yellow-400 transition-colors">
+                              <Mail size={24} className="text-white group-hover:text-black" />
+                          </div>
+                          <p className="text-zinc-400 text-sm uppercase font-bold mb-1">Email</p>
+                          <p className="text-lg font-bold text-white break-words group-hover:text-yellow-400">{config.contactEmail}</p>
+                      </a>
+                  )}
+              </div>
+          </div>
+      </div>
+  );
+
   // 3. Fleet Section
   const FleetSection = (
     <div key="fleet" className="bg-black py-24 border-b border-zinc-800">
@@ -604,6 +691,8 @@ const App: React.FC = () => {
     'transfers': TransfersSection,
     'fleet': FleetSection,
     'reservation': ReservationSection,
+    'bus': BusSection,
+    'contact': ContactSection,
   };
 
   if (isLoadingConfig) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -16,6 +16,8 @@ const SECTION_LABELS: Record<string, string> = {
   'transfers': 'Traslados Animados (Línea de tiempo)',
   'fleet': 'Flota de Vehículos',
   'reservation': 'Formulario de Reserva y Mapa',
+  'bus': 'Transporte Autobús / Grupos',
+  'contact': 'Sección de Contacto'
 };
 
 type DbStatus = 'idle' | 'connecting' | 'creating' | 'ready' | 'error' | 'saving';
@@ -416,6 +418,57 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                     <textarea name="footerText" value={formData.footerText} onChange={handleChange} rows={2} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none resize-none" />
                 </div>
              </div>
+
+            {/* Bus / Groups Settings */}
+            <div className="space-y-4 border border-zinc-800 p-4 rounded-xl bg-zinc-950/50">
+               <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
+                   <Bus size={16} /> Transporte Grupos (Autobús)
+               </h3>
+               
+               <div className="space-y-2">
+                   <label className="text-xs font-bold text-zinc-400">Título</label>
+                   <input type="text" name="busTitle" value={formData.busTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+               </div>
+               
+               <div className="space-y-2">
+                   <label className="text-xs font-bold text-zinc-400">Descripción</label>
+                   <textarea name="busDesc" value={formData.busDesc} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none resize-none" />
+               </div>
+
+               <div className="space-y-2">
+                   <label className="text-xs font-bold text-zinc-400">URL Imagen Autobús</label>
+                   <input type="text" name="busImageUrl" value={formData.busImageUrl} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none font-mono text-xs" />
+                   {formData.busImageUrl && <img src={getPreviewImage(formData.busImageUrl)} alt="Preview" className="h-24 w-full object-cover rounded border border-zinc-800 opacity-70" />}
+               </div>
+            </div>
+
+            {/* Contact Settings */}
+            <div className="space-y-4 border border-zinc-800 p-4 rounded-xl bg-zinc-950/50">
+               <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
+                   <Phone size={16} /> Datos de Contacto
+               </h3>
+               
+               <div className="space-y-2">
+                   <label className="text-xs font-bold text-zinc-400">Título Sección</label>
+                   <input type="text" name="contactTitle" value={formData.contactTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+               </div>
+               
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-400">Teléfono 1 (Principal)</label>
+                      <input type="text" name="contactPhone1" value={formData.contactPhone1} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                  </div>
+                  <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-400">Teléfono 2 (Secundario)</label>
+                      <input type="text" name="contactPhone2" value={formData.contactPhone2} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                  </div>
+               </div>
+
+               <div className="space-y-2">
+                   <label className="text-xs font-bold text-zinc-400">Email de Contacto</label>
+                   <input type="text" name="contactEmail" value={formData.contactEmail} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+               </div>
+            </div>
 
             {/* Video Section with Warnings */}
             <div className="space-y-3 border-2 border-dashed border-zinc-800 p-4 rounded-xl">

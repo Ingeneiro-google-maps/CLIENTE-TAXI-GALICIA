@@ -63,6 +63,18 @@ export interface SiteConfig {
   transferHealthDesc: string;
   transferPrivateTitle: string;
   transferPrivateDesc: string;
+  
+  // New: Bus / Groups Section
+  busTitle: string;
+  busDesc: string;
+  busImageUrl: string;
+
+  // New: Contact Section
+  contactTitle: string;
+  contactPhone1: string;
+  contactPhone2: string;
+  contactEmail: string;
+
   // New: Fleet Section
   fleetTitle: string;
   fleetDesc: string;

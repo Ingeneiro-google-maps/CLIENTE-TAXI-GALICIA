@@ -54,8 +54,8 @@ export const DEFAULT_CONFIG: SiteConfig = {
   geminiApiKey: "", // User must provide this in Admin Panel to fix Domain Errors
   demoMode: false, // Watermark disabled by default
 
-  // Default order: Services -> Transfers -> Fleet -> Reservation
-  sectionOrder: ['services', 'transfers', 'fleet', 'reservation'],
+  // Default order: Services -> Transfers -> Bus -> Fleet -> Reservation -> Contact
+  sectionOrder: ['services', 'transfers', 'bus', 'fleet', 'reservation', 'contact'],
 
   // Services Grid
   service1Title: "Camino de Santiago",
@@ -64,6 +64,17 @@ export const DEFAULT_CONFIG: SiteConfig = {
   service2Desc: "Conexiones directas con Lavacolla (Santiago), Peinador (Vigo) y Alvedro (Coruña). Puntualidad garantizada.",
   service3Title: "Servicio 24 Horas",
   service3Desc: "Disponibles día y noche. Servicios para bodas, eventos, mutuas, rehabilitación y paquetería urgente.",
+
+  // Bus / Groups Section
+  busTitle: "Viajes en Autobús y Grupos Grandes",
+  busDesc: "No solo te llevamos en taxi. Si necesitas transporte para bodas, excursiones, equipos deportivos o grandes grupos de peregrinos, organizamos viajes en autobús con total comodidad y seguridad. Adaptamos el vehículo al tamaño de tu grupo.",
+  busImageUrl: "https://images.pexels.com/photos/385997/pexels-photo-385997.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1",
+
+  // Contact Section
+  contactTitle: "Contáctanos",
+  contactPhone1: "+34 600 000 000",
+  contactPhone2: "",
+  contactEmail: "info@taxiverocaldas.com",
 
   // Fleet
   fleetTitle: "Nuestra Flota",
