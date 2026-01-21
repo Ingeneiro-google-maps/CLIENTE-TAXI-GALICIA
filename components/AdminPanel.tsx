@@ -419,87 +419,40 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                 </div>
              </div>
 
-            {/* Bus / Groups Settings */}
-            <div className="space-y-4 border border-zinc-800 p-4 rounded-xl bg-zinc-950/50">
-               <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
-                   <Bus size={16} /> Transporte Grupos (Autobús)
-               </h3>
-               
-               <div className="space-y-2">
-                   <label className="text-xs font-bold text-zinc-400">Título</label>
-                   <input type="text" name="busTitle" value={formData.busTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
-               </div>
-               
-               <div className="space-y-2">
-                   <label className="text-xs font-bold text-zinc-400">Descripción</label>
-                   <textarea name="busDesc" value={formData.busDesc} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none resize-none" />
-               </div>
-
-               <div className="space-y-2">
-                   <label className="text-xs font-bold text-zinc-400">URL Imagen Autobús</label>
-                   <input type="text" name="busImageUrl" value={formData.busImageUrl} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none font-mono text-xs" />
-                   {formData.busImageUrl && <img src={getPreviewImage(formData.busImageUrl)} alt="Preview" className="h-24 w-full object-cover rounded border border-zinc-800 opacity-70" />}
-               </div>
-            </div>
-
-            {/* Contact Settings */}
-            <div className="space-y-4 border border-zinc-800 p-4 rounded-xl bg-zinc-950/50">
-               <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
-                   <Phone size={16} /> Datos de Contacto
-               </h3>
-               
-               <div className="space-y-2">
-                   <label className="text-xs font-bold text-zinc-400">Título Sección</label>
-                   <input type="text" name="contactTitle" value={formData.contactTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
-               </div>
-               
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                      <label className="text-xs font-bold text-zinc-400">Teléfono 1 (Principal)</label>
-                      <input type="text" name="contactPhone1" value={formData.contactPhone1} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
-                  </div>
-                  <div className="space-y-2">
-                      <label className="text-xs font-bold text-zinc-400">Teléfono 2 (Secundario)</label>
-                      <input type="text" name="contactPhone2" value={formData.contactPhone2} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
-                  </div>
-               </div>
-
-               <div className="space-y-2">
-                   <label className="text-xs font-bold text-zinc-400">Email de Contacto</label>
-                   <input type="text" name="contactEmail" value={formData.contactEmail} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
-               </div>
-            </div>
-
-            {/* Video Section with Warnings */}
-            <div className="space-y-3 border-2 border-dashed border-zinc-800 p-4 rounded-xl">
-                <div className="flex items-center gap-2">
-                    <Video size={16} className="text-yellow-400" />
-                    <h3 className="text-yellow-400 font-bold uppercase text-sm">Videos de Fondo</h3>
-                </div>
-                <p className="text-[10px] text-zinc-400 mb-2 bg-black p-2 rounded border border-zinc-800">
-                  ⚠️ <strong>IMPORTANTE:</strong> No subas archivos de video directamente si pesan más de 1MB. Usa enlaces de internet. Si intentas guardar archivos grandes, el sistema se bloqueará.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {renderVideoSlot('A', 'videoUrlA')}
-                    {renderVideoSlot('B', 'videoUrlB')}
-                    {renderVideoSlot('C', 'videoUrlC')}
-                    {renderVideoSlot('D', 'videoUrlD')}
-                </div>
-            </div>
-
-            {/* Rest of Sections (Order, General, Fleet, etc) */}
-            {/* 1. Section Ordering */}
-            <div className="space-y-4">
-              <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider border-b border-zinc-800 pb-2 flex items-center gap-2">
-                <Layout size={16} /> Orden de Secciones
+            {/* 1. Section Ordering (MOVED HERE FOR VISIBILITY) */}
+            <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-yellow-500"></div>
+              <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider pb-4 flex items-center gap-2">
+                <Layout size={18} /> Organizador de la Web (Arrastrar / Mover)
               </h3>
-              <div className="space-y-2">
+              <p className="text-zinc-500 text-xs mb-4">Elige qué secciones aparecen primero en tu página.</p>
+              
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                 {(formData.sectionOrder || []).map((sectionId, index) => (
-                  <div key={sectionId} className="flex items-center justify-between bg-zinc-950 p-3 rounded-lg border border-zinc-800">
-                    <span className="text-sm font-bold text-white">{SECTION_LABELS[sectionId] || sectionId}</span>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => moveSection(index, 'up')} disabled={index === 0} className="p-1 text-zinc-400 hover:text-yellow-400"><ArrowUp size={18} /></button>
-                      <button type="button" onClick={() => moveSection(index, 'down')} disabled={index === (formData.sectionOrder?.length || 0) - 1} className="p-1 text-zinc-400 hover:text-yellow-400"><ArrowDown size={18} /></button>
+                  <div key={sectionId} className="flex items-center justify-between bg-black p-3 rounded-lg border border-zinc-800 hover:border-yellow-500/50 transition-colors group">
+                    <div className="flex items-center gap-3">
+                        <span className="bg-zinc-800 text-zinc-400 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{index + 1}</span>
+                        <span className="text-sm font-bold text-white group-hover:text-yellow-400 transition-colors">{SECTION_LABELS[sectionId] || sectionId}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <button 
+                        type="button" 
+                        onClick={() => moveSection(index, 'up')} 
+                        disabled={index === 0} 
+                        className="p-2 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded disabled:opacity-30"
+                        title="Subir"
+                      >
+                          <ArrowUp size={16} />
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => moveSection(index, 'down')} 
+                        disabled={index === (formData.sectionOrder?.length || 0) - 1} 
+                        className="p-2 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded disabled:opacity-30"
+                        title="Bajar"
+                      >
+                          <ArrowDown size={16} />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -615,6 +568,74 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                     </div>
                  ))}
                </div>
+            </div>
+
+            {/* Bus / Groups Settings */}
+            <div className="space-y-4 border border-zinc-800 p-4 rounded-xl bg-zinc-950/50">
+               <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
+                   <Bus size={16} /> Transporte Grupos (Autobús)
+               </h3>
+               
+               <div className="space-y-2">
+                   <label className="text-xs font-bold text-zinc-400">Título</label>
+                   <input type="text" name="busTitle" value={formData.busTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+               </div>
+               
+               <div className="space-y-2">
+                   <label className="text-xs font-bold text-zinc-400">Descripción</label>
+                   <textarea name="busDesc" value={formData.busDesc} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none resize-none" />
+               </div>
+
+               <div className="space-y-2">
+                   <label className="text-xs font-bold text-zinc-400">URL Imagen Autobús</label>
+                   <input type="text" name="busImageUrl" value={formData.busImageUrl} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none font-mono text-xs" />
+                   {formData.busImageUrl && <img src={getPreviewImage(formData.busImageUrl)} alt="Preview" className="h-24 w-full object-cover rounded border border-zinc-800 opacity-70" />}
+               </div>
+            </div>
+
+            {/* Contact Settings */}
+            <div className="space-y-4 border border-zinc-800 p-4 rounded-xl bg-zinc-950/50">
+               <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
+                   <Phone size={16} /> Datos de Contacto
+               </h3>
+               
+               <div className="space-y-2">
+                   <label className="text-xs font-bold text-zinc-400">Título Sección</label>
+                   <input type="text" name="contactTitle" value={formData.contactTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+               </div>
+               
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-400">Teléfono 1 (Principal)</label>
+                      <input type="text" name="contactPhone1" value={formData.contactPhone1} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                  </div>
+                  <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-400">Teléfono 2 (Secundario)</label>
+                      <input type="text" name="contactPhone2" value={formData.contactPhone2} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                  </div>
+               </div>
+
+               <div className="space-y-2">
+                   <label className="text-xs font-bold text-zinc-400">Email de Contacto</label>
+                   <input type="text" name="contactEmail" value={formData.contactEmail} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+               </div>
+            </div>
+
+            {/* Video Section with Warnings */}
+            <div className="space-y-3 border-2 border-dashed border-zinc-800 p-4 rounded-xl">
+                <div className="flex items-center gap-2">
+                    <Video size={16} className="text-yellow-400" />
+                    <h3 className="text-yellow-400 font-bold uppercase text-sm">Videos de Fondo</h3>
+                </div>
+                <p className="text-[10px] text-zinc-400 mb-2 bg-black p-2 rounded border border-zinc-800">
+                  ⚠️ <strong>IMPORTANTE:</strong> No subas archivos de video directamente si pesan más de 1MB. Usa enlaces de internet. Si intentas guardar archivos grandes, el sistema se bloqueará.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {renderVideoSlot('A', 'videoUrlA')}
+                    {renderVideoSlot('B', 'videoUrlB')}
+                    {renderVideoSlot('C', 'videoUrlC')}
+                    {renderVideoSlot('D', 'videoUrlD')}
+                </div>
             </div>
 
           </form>

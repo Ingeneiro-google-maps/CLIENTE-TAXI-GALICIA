@@ -40,8 +40,26 @@ const App: React.FC = () => {
         const dbPromise = dbService.getConfig();
 
         // Wait for whichever comes first: DB data or 2-second timeout
-        const resultConfig = await Promise.race([dbPromise, timeoutPromise]);
+        let resultConfig = await Promise.race([dbPromise, timeoutPromise]);
         
+        // --- AUTO-PATCH SECTION ORDER ---
+        // This logic ensures that if the DB has an old section order (missing 'bus' or 'contact'),
+        // they are automatically added so they appear on the site.
+        const allKnownSections = ['services', 'transfers', 'bus', 'fleet', 'reservation', 'contact'];
+        const currentOrder = resultConfig.sectionOrder || [];
+        
+        // Find sections that exist in the code but are missing in the DB config
+        const missingSections = allKnownSections.filter(section => !currentOrder.includes(section));
+        
+        if (missingSections.length > 0) {
+            // Append missing sections to the end
+            resultConfig = {
+                ...resultConfig,
+                sectionOrder: [...currentOrder, ...missingSections]
+            };
+        }
+        // -------------------------------
+
         if (isMounted) {
           setConfig(resultConfig);
           setIsLoadingConfig(false);
