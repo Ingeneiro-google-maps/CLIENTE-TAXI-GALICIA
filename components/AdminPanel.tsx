@@ -33,10 +33,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   // Sync internal state if currentConfig changes
   useEffect(() => {
     if (isOpen) {
-        setFormData(currentConfig);
+        // Migration check for admin panel state
+        const configWithImages = { ...currentConfig };
+        if (configWithImages.fleetItems) {
+            configWithImages.fleetItems = configWithImages.fleetItems.map((item: any) => {
+                if (item.imageUrl && (!item.images || item.images.length === 0)) {
+                    return { ...item, images: [item.imageUrl] };
+                }
+                if (!item.images) return { ...item, images: [] };
+                return item;
+            });
+        }
+        
+        setFormData(configWithImages);
         
         // Calculate initial size
-        const size = new Blob([JSON.stringify(currentConfig)]).size;
+        const size = new Blob([JSON.stringify(configWithImages)]).size;
         setConfigSize(size);
 
         // Load active DB URL
@@ -131,9 +143,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   };
 
   // Fleet Management
-  const handleFleetChange = (index: number, field: keyof FleetItem, value: string) => {
+  const handleFleetChange = (index: number, field: keyof FleetItem, value: any) => {
     const newItems = [...(formData.fleetItems || [])];
     newItems[index] = { ...newItems[index], [field]: value };
+    setFormData(prev => ({ ...prev, fleetItems: newItems }));
+  };
+
+  const addFleetImage = (fleetIndex: number) => {
+    const newItems = [...(formData.fleetItems || [])];
+    if (!newItems[fleetIndex].images) newItems[fleetIndex].images = [];
+    newItems[fleetIndex].images.push('');
+    setFormData(prev => ({ ...prev, fleetItems: newItems }));
+  };
+
+  const updateFleetImage = (fleetIndex: number, imgIndex: number, value: string) => {
+    const newItems = [...(formData.fleetItems || [])];
+    newItems[fleetIndex].images[imgIndex] = value;
+    setFormData(prev => ({ ...prev, fleetItems: newItems }));
+  };
+
+  const removeFleetImage = (fleetIndex: number, imgIndex: number) => {
+    const newItems = [...(formData.fleetItems || [])];
+    newItems[fleetIndex].images.splice(imgIndex, 1);
     setFormData(prev => ({ ...prev, fleetItems: newItems }));
   };
 
@@ -142,7 +173,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
       id: Date.now().toString(),
       title: 'Nuevo Vehículo',
       description: 'Descripción...',
-      imageUrl: 'https://images.pexels.com/photos/170811/pexels-photo-170811.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'
+      images: ['']
     };
     setFormData(prev => ({ 
       ...prev, 
@@ -516,12 +547,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                  <h3 className="text-yellow-400 font-bold uppercase text-sm flex items-center gap-2">
                     <ImageIcon size={16} /> Flota (Imágenes)
                  </h3>
-                 <button type="button" onClick={addFleetItem} className="flex items-center gap-1 text-xs bg-yellow-500 text-black px-3 py-1 rounded font-bold"><Plus size={14} /> Añadir</button>
+                 <button type="button" onClick={addFleetItem} className="flex items-center gap-1 text-xs bg-yellow-500 text-black px-3 py-1 rounded font-bold"><Plus size={14} /> Añadir Vehículo</button>
                </div>
                <div className="space-y-6">
                  {formData.fleetItems?.map((item, index) => (
                     <div key={item.id} className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 relative group">
-                        <button type="button" onClick={() => removeFleetItem(index)} className="absolute top-2 right-2 text-red-500 p-2 hover:bg-red-900/30 rounded z-10"><Trash2 size={16} /></button>
+                        <button type="button" onClick={() => removeFleetItem(index)} className="absolute top-2 right-2 text-red-500 p-2 hover:bg-red-900/30 rounded z-10" title="Borrar vehículo"><Trash2 size={16} /></button>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            {/* Left: Inputs */}
@@ -534,35 +565,63 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                                     <label className="text-[10px] text-zinc-500 font-bold uppercase">Descripción</label>
                                     <textarea value={item.description} onChange={(e) => handleFleetChange(index, 'description', e.target.value)} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm resize-none focus:border-yellow-500 outline-none" placeholder="Características..." />
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] text-zinc-500 font-bold uppercase">Enlace Imagen (URL)</label>
-                                    <input type="text" value={item.imageUrl} onChange={(e) => handleFleetChange(index, 'imageUrl', e.target.value)} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs font-mono focus:border-yellow-500 outline-none" placeholder="https://..." />
+                                
+                                <div className="space-y-2 pt-2 border-t border-zinc-800">
+                                    <div className="flex justify-between items-center">
+                                       <label className="text-[10px] text-yellow-500 font-bold uppercase flex items-center gap-1">
+                                          <ImageIcon size={10} /> Galería de Fotos
+                                       </label>
+                                       <button type="button" onClick={() => addFleetImage(index)} className="text-[10px] bg-zinc-800 hover:bg-zinc-700 px-2 py-1 rounded text-white flex items-center gap-1"><Plus size={10} /> URL</button>
+                                    </div>
+                                    
+                                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                                        {(item.images || []).map((imgUrl, imgIdx) => (
+                                            <div key={imgIdx} className="flex items-center gap-2">
+                                                <span className="text-[10px] text-zinc-600 w-4">{imgIdx+1}.</span>
+                                                <input 
+                                                    type="text" 
+                                                    value={imgUrl} 
+                                                    onChange={(e) => updateFleetImage(index, imgIdx, e.target.value)} 
+                                                    className="flex-1 bg-black border border-zinc-700 rounded p-1.5 text-white text-xs font-mono focus:border-yellow-500 outline-none" 
+                                                    placeholder="https://..." 
+                                                />
+                                                <button type="button" onClick={() => removeFleetImage(index, imgIdx)} className="text-zinc-500 hover:text-red-500"><Trash2 size={14} /></button>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                            </div>
                            
-                           {/* Right: Real Preview */}
+                           {/* Right: Gallery Preview */}
                            <div className="space-y-1">
-                                <label className="text-[10px] text-yellow-500 font-bold uppercase flex items-center gap-1">
-                                    <PlaySquare size={10} /> Vista Previa Real (Recorte)
+                                <label className="text-[10px] text-zinc-500 font-bold uppercase flex items-center gap-1">
+                                    <PlaySquare size={10} /> Previsualización (Primera Foto)
                                 </label>
                                 <div className="relative w-full h-48 bg-zinc-900 rounded-lg overflow-hidden border border-zinc-700 shadow-inner group-hover:border-yellow-500/50 transition-colors">
-                                    {item.imageUrl ? (
+                                    {item.images && item.images.length > 0 && item.images[0] ? (
                                         <>
-                                            <img src={getPreviewImage(item.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
+                                            <img src={getPreviewImage(item.images[0])} alt="Preview" className="w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 to-transparent opacity-60 pointer-events-none"></div>
                                             <div className="absolute bottom-4 left-4 right-4 pointer-events-none">
                                                 <p className="text-white font-bold text-sm truncate">{item.title || 'Título'}</p>
                                                 <p className="text-gray-400 text-[10px] truncate">{item.description || 'Descripción...'}</p>
+                                                {item.images.length > 1 && (
+                                                    <span className="bg-yellow-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded ml-2">+{item.images.length - 1} fotos</span>
+                                                )}
                                             </div>
                                         </>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center h-full text-zinc-600">
                                             <ImageIcon size={32} />
-                                            <span className="text-xs mt-2">Sin imagen</span>
+                                            <span className="text-xs mt-2">Sin imágenes</span>
                                         </div>
                                     )}
                                 </div>
-                                <p className="text-[10px] text-zinc-500 text-center">Así se verá en la web (recortado a este tamaño).</p>
+                                <div className="flex gap-1 overflow-x-auto pb-1 mt-2 h-10">
+                                    {(item.images || []).slice(1).map((thumb, idx) => (
+                                       thumb ? <img key={idx} src={getPreviewImage(thumb)} className="h-full w-10 object-cover rounded border border-zinc-800 opacity-60" /> : null
+                                    ))}
+                                </div>
                            </div>
                         </div>
                     </div>

@@ -26,7 +26,7 @@ export interface FleetItem {
   id: string;
   title: string;
   description: string;
-  imageUrl: string;
+  images: string[]; // Changed from single imageUrl to array
 }
 
 export interface SiteConfig {

@@ -8,7 +8,7 @@ import InstallPWA from './components/InstallPWA';
 import TrafficAssistant from './components/TrafficAssistant';
 import Watermark from './components/Watermark';
 import { dbService } from './services/db';
-import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock, Wifi, Activity, HeartPulse, Loader2, Bus, Mail, Users, ZoomIn, X } from 'lucide-react';
+import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock, Wifi, Activity, HeartPulse, Loader2, Bus, Mail, Users, ZoomIn, X, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
 
 const App: React.FC = () => {
   // --- Configuration State ---
@@ -25,6 +25,7 @@ const App: React.FC = () => {
 
   // State for Fleet Lightbox (Expanded Image)
   const [selectedFleetItem, setSelectedFleetItem] = useState<FleetItem | null>(null);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   // Load Config from Neon Database on Mount
   useEffect(() => {
@@ -43,20 +44,31 @@ const App: React.FC = () => {
         let resultConfig = await Promise.race([dbPromise, timeoutPromise]);
         
         // --- AUTO-PATCH SECTION ORDER ---
-        // This logic ensures that if the DB has an old section order (missing 'bus' or 'contact'),
-        // they are automatically added so they appear on the site.
         const allKnownSections = ['services', 'transfers', 'bus', 'fleet', 'reservation', 'contact'];
         const currentOrder = resultConfig.sectionOrder || [];
-        
-        // Find sections that exist in the code but are missing in the DB config
         const missingSections = allKnownSections.filter(section => !currentOrder.includes(section));
         
         if (missingSections.length > 0) {
-            // Append missing sections to the end
             resultConfig = {
                 ...resultConfig,
                 sectionOrder: [...currentOrder, ...missingSections]
             };
+        }
+
+        // --- AUTO-PATCH FLEET IMAGES (Legacy Migration) ---
+        // Ensure all fleet items have 'images' array even if coming from old DB structure
+        if (resultConfig.fleetItems) {
+            resultConfig.fleetItems = resultConfig.fleetItems.map((item: any) => {
+                // If it has old 'imageUrl' but no 'images', migrate it
+                if (item.imageUrl && (!item.images || item.images.length === 0)) {
+                    return { ...item, images: [item.imageUrl] };
+                }
+                // If no images at all, empty array
+                if (!item.images) {
+                    return { ...item, images: [] };
+                }
+                return item;
+            });
         }
         // -------------------------------
 
@@ -156,6 +168,11 @@ const App: React.FC = () => {
     setConfig(newConfig);
     // Save to DB
     return await dbService.saveConfig(newConfig);
+  };
+
+  const openFleetModal = (item: FleetItem) => {
+      setSelectedFleetItem(item);
+      setActiveImageIndex(0);
   };
 
   // --- Booking State ---
@@ -408,7 +425,7 @@ const App: React.FC = () => {
                     </div>
                 </div>
                 <div className="w-full md:w-1/2">
-                    <div className="relative rounded-3xl overflow-hidden border-4 border-zinc-800 shadow-2xl group cursor-pointer" onClick={() => setSelectedFleetItem({ id: 'bus', title: config.busTitle, description: config.busDesc, imageUrl: config.busImageUrl })}>
+                    <div className="relative rounded-3xl overflow-hidden border-4 border-zinc-800 shadow-2xl group cursor-pointer" onClick={() => openFleetModal({ id: 'bus', title: config.busTitle, description: config.busDesc, images: [config.busImageUrl] })}>
                         <div className="absolute inset-0 bg-yellow-400/20 mix-blend-overlay z-10 pointer-events-none"></div>
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
                            <ZoomIn className="text-white w-12 h-12 drop-shadow-lg" />
@@ -497,11 +514,11 @@ const App: React.FC = () => {
                   <div 
                     key={item.id} 
                     className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden hover:border-yellow-500/50 transition-all group cursor-pointer"
-                    onClick={() => setSelectedFleetItem(item)}
+                    onClick={() => openFleetModal(item)}
                   >
                       <div className="h-56 overflow-hidden relative">
                         <img 
-                          src={getOptimizedImage(item.imageUrl)} 
+                          src={getOptimizedImage(item.images?.[0] || '')} 
                           alt={item.title} 
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           onError={(e) => {
@@ -516,6 +533,14 @@ const App: React.FC = () => {
                                 <ZoomIn className="text-yellow-400" size={24} />
                             </div>
                         </div>
+                        
+                        {/* Multi-image indicator */}
+                        {item.images && item.images.length > 1 && (
+                           <div className="absolute top-3 right-3 bg-black/70 backdrop-blur text-white text-xs px-2 py-1 rounded flex items-center gap-1 border border-zinc-700">
+                              <ImageIcon size={12} className="text-yellow-400" />
+                              <span>{item.images.length}</span>
+                           </div>
+                        )}
                       </div>
                       <div className="p-8">
                         <h3 className="text-xl font-bold text-white mb-3 flex justify-between items-center">
@@ -773,6 +798,18 @@ const App: React.FC = () => {
   iframeW *= SAFETY_SCALE;
   iframeH *= SAFETY_SCALE;
 
+  // --- HELPER FOR GALLERY NAVIGATION ---
+  const handlePrevImage = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!selectedFleetItem || !selectedFleetItem.images) return;
+      setActiveImageIndex(prev => (prev === 0 ? selectedFleetItem.images.length - 1 : prev - 1));
+  };
+  const handleNextImage = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!selectedFleetItem || !selectedFleetItem.images) return;
+      setActiveImageIndex(prev => (prev === selectedFleetItem.images.length - 1 ? 0 : prev + 1));
+  };
+
   return (
     <div className="min-h-screen bg-neutral-900 text-white selection:bg-yellow-500 selection:text-black overflow-x-hidden">
       
@@ -956,13 +993,52 @@ const App: React.FC = () => {
 
             <div className="max-w-6xl w-full flex flex-col md:flex-row gap-8 items-center justify-center h-full">
                 {/* Image Container */}
-                <div className="w-full md:w-2/3 h-[50vh] md:h-[80vh] relative rounded-3xl overflow-hidden shadow-2xl border border-zinc-800 group">
-                    <img 
-                        src={getOptimizedImage(selectedFleetItem.imageUrl)} 
-                        alt={selectedFleetItem.title} 
-                        className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                <div className="w-full md:w-2/3 h-[50vh] md:h-[80vh] flex flex-col gap-4">
+                    <div className="flex-1 relative rounded-3xl overflow-hidden shadow-2xl border border-zinc-800 group bg-black">
+                        {/* Nav Buttons (Only if > 1 image) */}
+                        {selectedFleetItem.images && selectedFleetItem.images.length > 1 && (
+                            <>
+                                <button onClick={handlePrevImage} className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-yellow-400 hover:text-black text-white p-2 rounded-full z-20 transition-all">
+                                    <ChevronLeft size={32} />
+                                </button>
+                                <button onClick={handleNextImage} className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-yellow-400 hover:text-black text-white p-2 rounded-full z-20 transition-all">
+                                    <ChevronRight size={32} />
+                                </button>
+                            </>
+                        )}
+                        
+                        <img 
+                            key={activeImageIndex} // Force re-render for animation if simple
+                            src={getOptimizedImage(selectedFleetItem.images?.[activeImageIndex] || '')} 
+                            alt={selectedFleetItem.title} 
+                            className="w-full h-full object-contain md:object-cover animate-in fade-in duration-300"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none"></div>
+                        
+                        {/* Counter */}
+                        {selectedFleetItem.images && selectedFleetItem.images.length > 0 && (
+                            <div className="absolute bottom-6 left-0 right-0 text-center pointer-events-none">
+                                <span className="bg-black/50 px-3 py-1 rounded-full text-xs text-white/80">
+                                    {activeImageIndex + 1} / {selectedFleetItem.images.length}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Thumbnails Strip */}
+                    {selectedFleetItem.images && selectedFleetItem.images.length > 1 && (
+                        <div className="h-20 flex gap-2 overflow-x-auto pb-2 scrollbar-hide justify-center">
+                            {selectedFleetItem.images.map((img, idx) => (
+                                <button 
+                                    key={idx}
+                                    onClick={() => setActiveImageIndex(idx)}
+                                    className={`relative w-24 h-full rounded-lg overflow-hidden border-2 transition-all flex-shrink-0 ${activeImageIndex === idx ? 'border-yellow-400 opacity-100' : 'border-transparent opacity-50 hover:opacity-80'}`}
+                                >
+                                    <img src={getOptimizedImage(img)} alt="" className="w-full h-full object-cover" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Info Container */}

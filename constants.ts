@@ -84,19 +84,26 @@ export const DEFAULT_CONFIG: SiteConfig = {
       id: '1',
       title: 'Sedán Premium',
       description: 'Mercedes-Benz Clase E o similar. Máximo confort para viajes largos y traslados ejecutivos.',
-      imageUrl: 'https://www.dropbox.com/scl/fi/r2zkakuz2mhkvnhul7aw8/60e153e8-cfe8-4f0b-adce-0abc060a92e1.JPG?rlkey=idei07s49o8ov76uyhusyyg8h&st=w4e559uf&dl=0'
+      images: [
+        'https://www.dropbox.com/scl/fi/r2zkakuz2mhkvnhul7aw8/60e153e8-cfe8-4f0b-adce-0abc060a92e1.JPG?rlkey=idei07s49o8ov76uyhusyyg8h&st=w4e559uf&dl=0',
+        'https://www.dropbox.com/scl/fi/0d4cq8p9jrf2kqqh3ov4s/e81d1bd4-0cbb-4489-87ab-c8e8e0992326.JPG?rlkey=dn8bqsstk48a604eod5y8dl0x&st=410piymn&dl=0'
+      ]
     },
     {
       id: '2',
       title: 'Monovolumen 7 Plazas',
       description: 'Ideal para grupos de peregrinos o familias con mucho equipaje. Espacio y comodidad.',
-      imageUrl: 'https://images.pexels.com/photos/116675/pexels-photo-116675.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'
+      images: [
+        'https://images.pexels.com/photos/116675/pexels-photo-116675.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'
+      ]
     },
     {
       id: '3',
       title: 'Taxi Estándar',
       description: 'Vehículo híbrido ecológico perfecto para trayectos urbanos y desplazamientos rápidos.',
-      imageUrl: 'https://images.pexels.com/photos/4606344/pexels-photo-4606344.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'
+      images: [
+        'https://images.pexels.com/photos/4606344/pexels-photo-4606344.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'
+      ]
     }
   ],
 
