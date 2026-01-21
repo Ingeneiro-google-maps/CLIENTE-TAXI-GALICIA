@@ -30,133 +30,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   const [authError, setAuthError] = useState(false);
 
   // --- Panel State ---
-  const [formData, setFormData] = useState<SiteConfig>(currentConfig);
+  // Initialize with currentConfig but fallback to DEFAULT to prevent null crashes
+  const [formData, setFormData] = useState<SiteConfig>({ ...DEFAULT_CONFIG, ...currentConfig });
   const [dbUrl, setDbUrl] = useState('');
   const [dbStatus, setDbStatus] = useState<DbStatus>('idle');
   const [dbMessage, setDbMessage] = useState('');
   const [configSize, setConfigSize] = useState(0);
   const timeoutRef = useRef<any>(null);
 
-  // Reset Auth on Close
-  useEffect(() => {
-    if (!isOpen) {
-        setIsAuthenticated(false);
-        setPasswordInput('');
-        setAuthError(false);
+  // --- LOGIC HELPERS DEFINED BEFORE EARLY RETURNS ---
+
+  // CRITICAL FIX: Safe image preview to prevent rendering crash
+  const getPreviewImage = (url: string | undefined | null) => {
+    if (!url || typeof url !== 'string') return '';
+    if (url.includes('dropbox.com') && url.includes('dl=0')) {
+      return url.replace('dl=0', 'raw=1');
     }
-  }, [isOpen]);
-
-  // Sync internal state if currentConfig changes
-  useEffect(() => {
-    if (isOpen) {
-        // Migration check for admin panel state
-        const configWithImages = { ...currentConfig };
-        if (configWithImages.fleetItems) {
-            configWithImages.fleetItems = configWithImages.fleetItems.map((item: any) => {
-                if (item.imageUrl && (!item.images || item.images.length === 0)) {
-                    return { ...item, images: [item.imageUrl] };
-                }
-                if (!item.images) return { ...item, images: [] };
-                return item;
-            });
-        }
-        
-        setFormData(configWithImages);
-        
-        // Calculate initial size
-        const size = new Blob([JSON.stringify(configWithImages)]).size;
-        setConfigSize(size);
-
-        // Load active DB URL
-        const activeUrl = getDbUrl();
-        setDbUrl(activeUrl);
-
-        if (activeUrl) {
-            testDbConnection(activeUrl);
-        }
-    }
-  }, [currentConfig, isOpen]);
-
-  // Monitor Config Size
-  useEffect(() => {
-     const size = new Blob([JSON.stringify(formData)]).size;
-     setConfigSize(size);
-  }, [formData]);
-
-  if (!isOpen) return null;
-
-  // --- AUTH HANDLE ---
-  const handleLogin = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (passwordInput === ADMIN_PASSWORD) {
-          setIsAuthenticated(true);
-          setAuthError(false);
-      } else {
-          setAuthError(true);
-          setPasswordInput('');
-      }
+    return url;
   };
-
-  // --- LOGIN SCREEN RENDER ---
-  if (!isAuthenticated) {
-      return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in zoom-in duration-300">
-             <div className="w-full max-w-md bg-zinc-900 border border-yellow-500/50 rounded-2xl shadow-2xl p-8 relative overflow-hidden">
-                 {/* Decorative */}
-                 <div className="absolute top-0 left-0 w-full h-1 bg-yellow-500 shadow-[0_0_20px_rgba(250,204,21,0.5)]"></div>
-                 
-                 <button onClick={onClose} className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors">
-                     <X size={24} />
-                 </button>
-
-                 <div className="flex flex-col items-center text-center mb-8">
-                     <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center border border-zinc-800 mb-4 shadow-inner">
-                         <Lock size={32} className="text-yellow-500" />
-                     </div>
-                     <h2 className="text-2xl font-black text-white uppercase tracking-tight">Acceso Restringido</h2>
-                     <p className="text-zinc-400 text-sm mt-2">Introduce la clave de administrador para editar la web.</p>
-                 </div>
-
-                 <form onSubmit={handleLogin} className="space-y-6">
-                     <div className="space-y-2">
-                         <div className="relative">
-                             <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-                             <input 
-                                type="password" 
-                                autoFocus
-                                placeholder="Contraseña..." 
-                                className={`w-full bg-black border ${authError ? 'border-red-500 animate-shake' : 'border-zinc-700 focus:border-yellow-500'} rounded-xl py-4 pl-12 pr-4 text-white placeholder-zinc-600 outline-none transition-all`}
-                                value={passwordInput}
-                                onChange={(e) => {
-                                    setPasswordInput(e.target.value);
-                                    if(authError) setAuthError(false);
-                                }}
-                             />
-                         </div>
-                         {authError && (
-                             <p className="text-red-500 text-xs font-bold flex items-center justify-center gap-1 animate-pulse">
-                                 <ShieldAlert size={12} /> Contraseña incorrecta
-                             </p>
-                         )}
-                     </div>
-
-                     <button 
-                        type="submit" 
-                        className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-4 rounded-xl flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-[0_0_20px_rgba(250,204,21,0.2)]"
-                     >
-                         ENTRAR AL PANEL <ArrowRight size={20} />
-                     </button>
-                 </form>
-                 
-                 <div className="mt-6 text-center">
-                     <p className="text-[10px] text-zinc-600 font-mono">ID: SYSTEM_SECURE_V1</p>
-                 </div>
-             </div>
-        </div>
-      );
-  }
-
-  // --- MAIN ADMIN LOGIC ---
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -166,17 +57,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   const handleToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
      const { name, checked } = e.target;
      setFormData(prev => ({ ...prev, [name]: checked }));
-  };
-
-  const handleDbUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVal = e.target.value;
-    setDbUrl(newVal);
-    
-    // Debounce connection test
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      testDbConnection(newVal);
-    }, 800);
   };
 
   const testDbConnection = async (url: string) => {
@@ -200,13 +80,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     }
   };
 
+  const handleDbUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVal = e.target.value;
+    setDbUrl(newVal);
+    
+    // Debounce connection test
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      testDbConnection(newVal);
+    }, 800);
+  };
+
   const handleReset = () => {
     if (confirm('¿Estás seguro de restablecer los valores originales? Esto borrará tus cambios no guardados.')) {
       setFormData(DEFAULT_CONFIG);
     }
   };
 
-  // Generalized upload handler for any field
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>, fieldName: keyof SiteConfig) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -337,22 +227,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     }
   };
 
-  // Helper to fix Dropbox URLs for preview
-  const getPreviewImage = (url: string) => {
-    if (!url) return '';
-    if (url.includes('dropbox.com') && url.includes('dl=0')) {
-      return url.replace('dl=0', 'raw=1');
-    }
-    return url;
-  };
-
   const statusUI = getStatusUI();
   const configSizeMB = (configSize / (1024 * 1024)).toFixed(2);
   const isTooLarge = configSize > 3 * 1024 * 1024; // 3MB Limit Warning
 
+  // Robust video slot render
   const renderVideoSlot = (slot: string, fieldName: keyof SiteConfig) => {
-    const value = formData[fieldName] as string;
-    const isFile = value && value.startsWith('data:video');
+    const value = formData[fieldName] as string | undefined;
+    const safeValue = value || '';
+    const isFile = safeValue.startsWith('data:video');
 
     return (
       <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-3">
@@ -360,20 +243,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
              <label className="text-xs font-bold text-yellow-500 flex items-center gap-2">
                <PlaySquare size={14} /> Opción {slot}
              </label>
-             {value && <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full">Activo</span>}
+             {safeValue && <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full">Activo</span>}
          </div>
          
          <div className="flex gap-2">
             <input 
               type="text" 
               name={fieldName} 
-              value={isFile ? '(Archivo pesado cargado - BORRAR PARA GUARDAR)' : value} 
+              value={isFile ? '(Archivo pesado cargado - BORRAR PARA GUARDAR)' : safeValue} 
               onChange={handleChange}
               disabled={isFile}
               placeholder={`Pega aquí la URL del Video ${slot}`}
               className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white focus:border-yellow-500 focus:outline-none font-mono text-[10px] disabled:opacity-50"
             />
-            {value && (
+            {safeValue && (
               <button 
                 type="button" 
                 onClick={() => clearVideo(fieldName)} 
@@ -407,6 +290,143 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
       </div>
     );
   };
+
+  // --- EFFECTS ---
+
+  // Reset Auth on Close
+  useEffect(() => {
+    if (!isOpen) {
+        setIsAuthenticated(false);
+        setPasswordInput('');
+        setAuthError(false);
+    }
+  }, [isOpen]);
+
+  // Sync internal state if currentConfig changes
+  useEffect(() => {
+    if (isOpen) {
+        // Migration check for admin panel state
+        const configWithImages = { ...currentConfig };
+        
+        // Ensure fleetItems exists and has images array
+        if (!configWithImages.fleetItems) {
+             configWithImages.fleetItems = [];
+        } else {
+             configWithImages.fleetItems = configWithImages.fleetItems.map((item: any) => {
+                const newItem = { ...item };
+                if (newItem.imageUrl && (!newItem.images || newItem.images.length === 0)) {
+                    newItem.images = [newItem.imageUrl];
+                }
+                if (!newItem.images) newItem.images = [];
+                return newItem;
+            });
+        }
+        
+        setFormData(configWithImages);
+        
+        // Calculate initial size
+        try {
+            const size = new Blob([JSON.stringify(configWithImages)]).size;
+            setConfigSize(size);
+        } catch (e) {
+            setConfigSize(0);
+        }
+
+        // Load active DB URL
+        const activeUrl = getDbUrl();
+        setDbUrl(activeUrl);
+
+        if (activeUrl) {
+            testDbConnection(activeUrl);
+        }
+    }
+  }, [currentConfig, isOpen]);
+
+  // Monitor Config Size
+  useEffect(() => {
+     try {
+         const size = new Blob([JSON.stringify(formData)]).size;
+         setConfigSize(size);
+     } catch (e) {}
+  }, [formData]);
+
+  if (!isOpen) return null;
+
+  // --- AUTH HANDLE ---
+  const handleLogin = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (passwordInput === ADMIN_PASSWORD) {
+          setIsAuthenticated(true);
+          setAuthError(false);
+      } else {
+          setAuthError(true);
+          setPasswordInput('');
+      }
+  };
+
+  // --- LOGIN SCREEN RENDER ---
+  if (!isAuthenticated) {
+      return (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in zoom-in duration-300">
+             <div className="w-full max-w-md bg-zinc-900 border border-yellow-500/50 rounded-2xl shadow-2xl p-8 relative overflow-hidden">
+                 {/* Decorative */}
+                 <div className="absolute top-0 left-0 w-full h-1 bg-yellow-500 shadow-[0_0_20px_rgba(250,204,21,0.5)]"></div>
+                 
+                 <button onClick={onClose} className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors">
+                     <X size={24} />
+                 </button>
+
+                 <div className="flex flex-col items-center text-center mb-8">
+                     <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center border border-zinc-800 mb-4 shadow-inner">
+                         <Lock size={32} className="text-yellow-500" />
+                     </div>
+                     <h2 className="text-2xl font-black text-white uppercase tracking-tight">Acceso Restringido</h2>
+                     <p className="text-zinc-400 text-sm mt-2">Introduce la clave de administrador para editar la web.</p>
+                 </div>
+
+                 <form onSubmit={handleLogin} className="space-y-6">
+                     <div className="space-y-2">
+                         <div className="relative">
+                             <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                             <input 
+                                type="password" 
+                                autoFocus
+                                placeholder="Contraseña..." 
+                                className={`w-full bg-black border ${authError ? 'border-red-500 animate-shake' : 'border-zinc-700 focus:border-yellow-500'} rounded-xl py-4 pl-12 pr-4 text-white placeholder-zinc-600 outline-none transition-all`}
+                                value={passwordInput}
+                                onChange={(e) => {
+                                    setPasswordInput(e.target.value);
+                                    if(authError) setAuthError(false);
+                                }}
+                             />
+                         </div>
+                         {authError && (
+                             <p className="text-red-500 text-xs font-bold flex items-center justify-center gap-1 animate-pulse">
+                                 <ShieldAlert size={12} /> Contraseña incorrecta
+                             </p>
+                         )}
+                     </div>
+
+                     <button 
+                        type="submit" 
+                        className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-black py-4 rounded-xl flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-[0_0_20px_rgba(250,204,21,0.2)]"
+                     >
+                         ENTRAR AL PANEL <ArrowRight size={20} />
+                     </button>
+                 </form>
+                 
+                 <div className="mt-6 text-center">
+                     <p className="text-[10px] text-zinc-600 font-mono">ID: SYSTEM_SECURE_V1</p>
+                 </div>
+             </div>
+        </div>
+      );
+  }
+
+  // --- MAIN ADMIN LOGIC ---
+
+  // Safe Guard: If something went terribly wrong during init
+  if (!formData) return null;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
@@ -505,7 +525,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                         </div>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="demoMode" checked={formData.demoMode} onChange={handleToggle} className="sr-only peer" />
+                        <input type="checkbox" name="demoMode" checked={formData.demoMode || false} onChange={handleToggle} className="sr-only peer" />
                         <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
                     </label>
                 </div>
@@ -520,7 +540,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                             <input 
                               type="password" 
                               name="geminiApiKey" 
-                              value={formData.geminiApiKey} 
+                              value={formData.geminiApiKey || ''} 
                               onChange={handleChange} 
                               placeholder="Pega aquí tu API Key (AIza...)"
                               className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-white text-xs focus:border-yellow-500 outline-none font-mono"
@@ -532,10 +552,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                 {/* Footer Settings */}
                 <div className="space-y-3 pt-2">
                     <label className="text-xs font-bold text-zinc-400 block">Título Pie de Página</label>
-                    <input type="text" name="footerTitle" value={formData.footerTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                    <input type="text" name="footerTitle" value={formData.footerTitle || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
                     
                     <label className="text-xs font-bold text-zinc-400 block">Texto Pie de Página</label>
-                    <textarea name="footerText" value={formData.footerText} onChange={handleChange} rows={2} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none resize-none" />
+                    <textarea name="footerText" value={formData.footerText || ''} onChange={handleChange} rows={2} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none resize-none" />
                 </div>
              </div>
 
@@ -583,16 +603,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-400">Título Principal</label>
-                  <input type="text" name="heroTitle" value={formData.heroTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                  <input type="text" name="heroTitle" value={formData.heroTitle || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-zinc-400">WhatsApp (Número o Enlace)</label>
-                  <input type="text" name="whatsappUrl" value={formData.whatsappUrl} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                  <input type="text" name="whatsappUrl" value={formData.whatsappUrl || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
                 </div>
             </div>
             <div className="space-y-2">
                 <label className="text-xs font-bold text-zinc-400">Subtítulo</label>
-                <textarea name="heroSubtitle" value={formData.heroSubtitle} onChange={handleChange} rows={2} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none resize-none" />
+                <textarea name="heroSubtitle" value={formData.heroSubtitle || ''} onChange={handleChange} rows={2} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none resize-none" />
             </div>
 
             {/* Transfers Text Editing */}
@@ -603,29 +623,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                 
                 <div className="space-y-2">
                     <label className="text-xs font-bold text-zinc-400">Título Principal de la Sección</label>
-                    <input type="text" name="transfersTitle" value={formData.transfersTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                    <input type="text" name="transfersTitle" value={formData.transfersTitle || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 mt-4">
                     {/* Airport */}
                     <div className="bg-zinc-900 p-3 rounded-lg border border-zinc-800">
                         <label className="text-xs font-bold text-yellow-500 mb-2 block">1. Aeropuerto</label>
-                        <input type="text" name="transferAirportTitle" value={formData.transferAirportTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm mb-2" placeholder="Título" />
-                        <textarea name="transferAirportDesc" value={formData.transferAirportDesc} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs resize-none" placeholder="Descripción" />
+                        <input type="text" name="transferAirportTitle" value={formData.transferAirportTitle || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm mb-2" placeholder="Título" />
+                        <textarea name="transferAirportDesc" value={formData.transferAirportDesc || ''} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs resize-none" placeholder="Descripción" />
                     </div>
 
                     {/* Health */}
                     <div className="bg-zinc-900 p-3 rounded-lg border border-zinc-800">
                         <label className="text-xs font-bold text-yellow-500 mb-2 block">2. Centros de Salud</label>
-                        <input type="text" name="transferHealthTitle" value={formData.transferHealthTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm mb-2" placeholder="Título" />
-                        <textarea name="transferHealthDesc" value={formData.transferHealthDesc} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs resize-none" placeholder="Descripción" />
+                        <input type="text" name="transferHealthTitle" value={formData.transferHealthTitle || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm mb-2" placeholder="Título" />
+                        <textarea name="transferHealthDesc" value={formData.transferHealthDesc || ''} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs resize-none" placeholder="Descripción" />
                     </div>
 
                     {/* Private */}
                     <div className="bg-zinc-900 p-3 rounded-lg border border-zinc-800">
                         <label className="text-xs font-bold text-yellow-500 mb-2 block">3. Privados / Otros</label>
-                        <input type="text" name="transferPrivateTitle" value={formData.transferPrivateTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm mb-2" placeholder="Título" />
-                        <textarea name="transferPrivateDesc" value={formData.transferPrivateDesc} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs resize-none" placeholder="Descripción" />
+                        <input type="text" name="transferPrivateTitle" value={formData.transferPrivateTitle || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm mb-2" placeholder="Título" />
+                        <textarea name="transferPrivateDesc" value={formData.transferPrivateDesc || ''} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs resize-none" placeholder="Descripción" />
                     </div>
                 </div>
             </div>
@@ -648,11 +668,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                            <div className="space-y-3">
                                 <div className="space-y-1">
                                     <label className="text-[10px] text-zinc-500 font-bold uppercase">Nombre del Modelo</label>
-                                    <input type="text" value={item.title} onChange={(e) => handleFleetChange(index, 'title', e.target.value)} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm focus:border-yellow-500 outline-none" placeholder="Ej: Mercedes Clase E" />
+                                    <input type="text" value={item.title || ''} onChange={(e) => handleFleetChange(index, 'title', e.target.value)} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm focus:border-yellow-500 outline-none" placeholder="Ej: Mercedes Clase E" />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] text-zinc-500 font-bold uppercase">Descripción</label>
-                                    <textarea value={item.description} onChange={(e) => handleFleetChange(index, 'description', e.target.value)} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm resize-none focus:border-yellow-500 outline-none" placeholder="Características..." />
+                                    <textarea value={item.description || ''} onChange={(e) => handleFleetChange(index, 'description', e.target.value)} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm resize-none focus:border-yellow-500 outline-none" placeholder="Características..." />
                                 </div>
                                 
                                 <div className="space-y-2 pt-2 border-t border-zinc-800">
@@ -669,7 +689,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                                                 <span className="text-[10px] text-zinc-600 w-4">{imgIdx+1}.</span>
                                                 <input 
                                                     type="text" 
-                                                    value={imgUrl} 
+                                                    value={imgUrl || ''} 
                                                     onChange={(e) => updateFleetImage(index, imgIdx, e.target.value)} 
                                                     className="flex-1 bg-black border border-zinc-700 rounded p-1.5 text-white text-xs font-mono focus:border-yellow-500 outline-none" 
                                                     placeholder="https://..." 
@@ -726,17 +746,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                
                <div className="space-y-2">
                    <label className="text-xs font-bold text-zinc-400">Título</label>
-                   <input type="text" name="busTitle" value={formData.busTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                   <input type="text" name="busTitle" value={formData.busTitle || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
                </div>
                
                <div className="space-y-2">
                    <label className="text-xs font-bold text-zinc-400">Descripción</label>
-                   <textarea name="busDesc" value={formData.busDesc} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none resize-none" />
+                   <textarea name="busDesc" value={formData.busDesc || ''} onChange={handleChange} rows={3} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none resize-none" />
                </div>
 
                <div className="space-y-2">
                    <label className="text-xs font-bold text-zinc-400">URL Imagen Autobús</label>
-                   <input type="text" name="busImageUrl" value={formData.busImageUrl} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none font-mono text-xs" />
+                   <input type="text" name="busImageUrl" value={formData.busImageUrl || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none font-mono text-xs" />
                    {formData.busImageUrl && <img src={getPreviewImage(formData.busImageUrl)} alt="Preview" className="h-24 w-full object-cover rounded border border-zinc-800 opacity-70" />}
                </div>
             </div>
@@ -749,23 +769,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                
                <div className="space-y-2">
                    <label className="text-xs font-bold text-zinc-400">Título Sección</label>
-                   <input type="text" name="contactTitle" value={formData.contactTitle} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                   <input type="text" name="contactTitle" value={formData.contactTitle || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
                </div>
                
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                       <label className="text-xs font-bold text-zinc-400">Teléfono 1 (Principal)</label>
-                      <input type="text" name="contactPhone1" value={formData.contactPhone1} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                      <input type="text" name="contactPhone1" value={formData.contactPhone1 || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
                   </div>
                   <div className="space-y-2">
                       <label className="text-xs font-bold text-zinc-400">Teléfono 2 (Secundario)</label>
-                      <input type="text" name="contactPhone2" value={formData.contactPhone2} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                      <input type="text" name="contactPhone2" value={formData.contactPhone2 || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
                   </div>
                </div>
 
                <div className="space-y-2">
                    <label className="text-xs font-bold text-zinc-400">Email de Contacto</label>
-                   <input type="text" name="contactEmail" value={formData.contactEmail} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
+                   <input type="text" name="contactEmail" value={formData.contactEmail || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" />
                </div>
             </div>
 
