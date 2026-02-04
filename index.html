@@ -34,6 +34,18 @@
         animation: drive 8s linear infinite;
       }
       
+      /* Infinite Scroll for Partners */
+      @keyframes scroll {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+      }
+      .animate-scroll {
+        animation: scroll 30s linear infinite;
+      }
+      .animate-scroll:hover {
+        animation-play-state: paused;
+      }
+      
       /* Map Path Animation */
       .path-line {
         stroke-dasharray: 1000;

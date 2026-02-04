@@ -54,8 +54,8 @@ export const DEFAULT_CONFIG: SiteConfig = {
   geminiApiKey: "", // User must provide this in Admin Panel to fix Domain Errors
   demoMode: false, // Watermark disabled by default
 
-  // Default order: Services -> Transfers -> Bus -> Fleet -> Reservation -> Contact
-  sectionOrder: ['services', 'transfers', 'bus', 'fleet', 'reservation', 'contact'],
+  // Default order: Services -> Transfers -> Bus -> Fleet -> Reservation -> Contact -> Partners
+  sectionOrder: ['services', 'transfers', 'bus', 'fleet', 'reservation', 'contact', 'partners'],
 
   // Services Grid
   service1Title: "Camino de Santiago",
@@ -107,6 +107,38 @@ export const DEFAULT_CONFIG: SiteConfig = {
       images: [
         'https://images.pexels.com/photos/4606344/pexels-photo-4606344.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1'
       ]
+    }
+  ],
+  
+  // Partners Section (New)
+  partnersTitle: "Nuestros Socios",
+  partnersDesc: "Colaboramos con las mejores empresas para garantizar un servicio integral.",
+  partnersTemplate: 'scroll', // Default template
+  partnerItems: [
+    {
+        id: '1',
+        name: 'VISA / Mastercard',
+        logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Mastercard-logo.svg/1280px-Mastercard-logo.svg.png'
+    },
+    {
+        id: '2',
+        name: 'Xunta de Galicia',
+        logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Xunta_de_Galicia_logo.svg/2560px-Xunta_de_Galicia_logo.svg.png'
+    },
+    {
+        id: '3',
+        name: 'Camino de Santiago',
+        logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Cockle_symbol_of_the_Way_of_St._James.svg/1200px-Cockle_symbol_of_the_Way_of_St._James.svg.png'
+    },
+    {
+        id: '4',
+        name: 'Seguros',
+        logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Allianz_logo.svg/2560px-Allianz_logo.svg.png'
+    },
+    {
+        id: '5',
+        name: 'Concello Caldas',
+        logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Escudo_de_Caldas_de_Reis.svg/856px-Escudo_de_Caldas_de_Reis.svg.png'
     }
   ],
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SiteConfig, FleetItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight, MapPin } from 'lucide-react';
+import { SiteConfig, FleetItem, PartnerItem } from '../types';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight, MapPin, Handshake, LayoutGrid } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -17,7 +17,8 @@ const SECTION_LABELS: Record<string, string> = {
   'fleet': 'Flota de Vehículos',
   'reservation': 'Formulario de Reserva y Mapa',
   'bus': 'Transporte Autobús / Grupos',
-  'contact': 'Sección de Contacto'
+  'contact': 'Sección de Contacto',
+  'partners': 'Socios y Colaboradores'
 };
 
 type DbStatus = 'idle' | 'connecting' | 'creating' | 'ready' | 'error' | 'saving';
@@ -43,13 +44,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   // CRITICAL FIX: Safe image preview to prevent rendering crash
   const getPreviewImage = (url: string | undefined | null) => {
     if (!url || typeof url !== 'string') return '';
-    if (url.includes('dropbox.com') && url.includes('dl=0')) {
-      return url.replace('dl=0', 'raw=1');
+    let finalUrl = url;
+    // Fix Dropbox direct link if needed (sync with App.tsx logic)
+    if (finalUrl.includes('dropbox.com') && finalUrl.includes('dl=0')) {
+      finalUrl = finalUrl.replace('dl=0', 'raw=1');
     }
-    return url;
+    return finalUrl;
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -164,6 +167,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     const newItems = [...(formData.fleetItems || [])];
     newItems.splice(index, 1);
     setFormData(prev => ({ ...prev, fleetItems: newItems }));
+  };
+
+  // Partners Management
+  const handlePartnerChange = (index: number, field: keyof PartnerItem, value: string) => {
+    const newItems = [...(formData.partnerItems || [])];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setFormData(prev => ({ ...prev, partnerItems: newItems }));
+  };
+
+  const addPartnerItem = () => {
+    const newItem: PartnerItem = {
+        id: Date.now().toString(),
+        name: 'Nuevo Socio',
+        logoUrl: ''
+    };
+    setFormData(prev => ({
+        ...prev,
+        partnerItems: [...(prev.partnerItems || []), newItem]
+    }));
+  };
+
+  const removePartnerItem = (index: number) => {
+      const newItems = [...(formData.partnerItems || [])];
+      newItems.splice(index, 1);
+      setFormData(prev => ({ ...prev, partnerItems: newItems }));
   };
 
   // Section Ordering
@@ -320,6 +348,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                 if (!newItem.images) newItem.images = [];
                 return newItem;
             });
+        }
+
+        // Ensure partner items exist
+        if (!configWithImages.partnerItems) {
+            configWithImages.partnerItems = [];
         }
         
         setFormData(configWithImages);
@@ -824,6 +857,74 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                <div className="space-y-2">
                    <label className="text-xs font-bold text-zinc-400">Dirección Física (Opcional)</label>
                    <input type="text" name="contactAddress" value={formData.contactAddress || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-yellow-500 outline-none" placeholder="Ej: Rúa Real, Caldas de Reis..." />
+               </div>
+            </div>
+
+            {/* PARTNERS SECTION (New) */}
+            <div className="space-y-4 border border-zinc-800 p-4 rounded-xl bg-zinc-950/50">
+               <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+                 <h3 className="text-yellow-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
+                    <Handshake size={16} /> Socios / Empresas
+                 </h3>
+                 <button type="button" onClick={addPartnerItem} className="flex items-center gap-1 text-xs bg-yellow-500 text-black px-3 py-1 rounded font-bold"><Plus size={14} /> Añadir Socio</button>
+               </div>
+               
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                       <label className="text-xs font-bold text-zinc-400">Título Sección</label>
+                       <input type="text" name="partnersTitle" value={formData.partnersTitle || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs focus:border-yellow-500 outline-none" />
+                  </div>
+                   <div className="space-y-2">
+                       <label className="text-xs font-bold text-zinc-400">Descripción Corta</label>
+                       <input type="text" name="partnersDesc" value={formData.partnersDesc || ''} onChange={handleChange} className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs focus:border-yellow-500 outline-none" />
+                  </div>
+               </div>
+
+               {/* TEMPLATE SELECTOR */}
+               <div className="bg-black border border-zinc-700 p-3 rounded-lg flex items-center justify-between">
+                   <div className="flex items-center gap-2 text-zinc-300">
+                       <LayoutGrid size={16} className="text-yellow-500" />
+                       <span className="text-xs font-bold">Plantilla de Diseño</span>
+                   </div>
+                   <select 
+                      name="partnersTemplate" 
+                      value={formData.partnersTemplate || 'scroll'} 
+                      onChange={handleChange}
+                      className="bg-zinc-900 text-white text-xs border border-zinc-700 rounded p-1.5 focus:border-yellow-500 outline-none"
+                   >
+                       <option value="scroll">Carrusel Infinito (Animado)</option>
+                       <option value="grid">Cuadrícula Estática</option>
+                       <option value="cards">Tarjetas Destacadas</option>
+                   </select>
+               </div>
+
+               <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto pr-2">
+                  {(formData.partnerItems || []).map((item, index) => (
+                      <div key={item.id} className="flex items-center gap-3 bg-zinc-900 p-2 rounded border border-zinc-800">
+                          <button type="button" onClick={() => removePartnerItem(index)} className="text-zinc-500 hover:text-red-500"><Trash2 size={14} /></button>
+                          
+                          <div className="flex-1 space-y-1">
+                              <input 
+                                type="text" 
+                                value={item.name} 
+                                onChange={(e) => handlePartnerChange(index, 'name', e.target.value)}
+                                className="w-full bg-black border border-zinc-700 rounded p-1 text-white text-xs focus:border-yellow-500 outline-none"
+                                placeholder="Nombre Socio"
+                              />
+                              <input 
+                                type="text" 
+                                value={item.logoUrl} 
+                                onChange={(e) => handlePartnerChange(index, 'logoUrl', e.target.value)}
+                                className="w-full bg-black border border-zinc-700 rounded p-1 text-zinc-400 text-[10px] font-mono focus:border-yellow-500 outline-none"
+                                placeholder="URL Imagen (Dropbox / Web)"
+                              />
+                          </div>
+
+                          <div className="w-12 h-12 bg-white/10 rounded flex items-center justify-center p-1 border border-zinc-700 overflow-hidden">
+                              {item.logoUrl ? <img src={getPreviewImage(item.logoUrl)} className="w-full h-full object-cover rounded" /> : <ImageIcon size={16} className="text-zinc-600"/>}
+                          </div>
+                      </div>
+                  ))}
                </div>
             </div>
 

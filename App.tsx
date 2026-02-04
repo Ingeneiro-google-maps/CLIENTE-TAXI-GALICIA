@@ -8,7 +8,7 @@ import InstallPWA from './components/InstallPWA';
 import TrafficAssistant from './components/TrafficAssistant';
 import Watermark from './components/Watermark';
 import { dbService } from './services/db';
-import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock, Wifi, Activity, HeartPulse, Loader2, Bus, Mail, Users, ZoomIn, X, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { Car, MapPin, Navigation, Phone, ShieldCheck, Clock, Star, Map, Plane, Briefcase, Backpack, User, Smartphone, Lock, Wifi, Activity, HeartPulse, Loader2, Bus, Mail, Users, ZoomIn, X, ChevronLeft, ChevronRight, Image as ImageIcon, Handshake, LayoutGrid } from 'lucide-react';
 
 const App: React.FC = () => {
   // --- Configuration State ---
@@ -44,7 +44,7 @@ const App: React.FC = () => {
         let resultConfig = await Promise.race([dbPromise, timeoutPromise]);
         
         // --- AUTO-PATCH SECTION ORDER ---
-        const allKnownSections = ['services', 'transfers', 'bus', 'fleet', 'reservation', 'contact'];
+        const allKnownSections = ['services', 'transfers', 'bus', 'fleet', 'reservation', 'contact', 'partners'];
         const currentOrder = resultConfig.sectionOrder || [];
         const missingSections = allKnownSections.filter(section => !currentOrder.includes(section));
         
@@ -286,13 +286,15 @@ const App: React.FC = () => {
 
   // --- Dynamic Section Rendering ---
 
-  // Helper to fix Dropbox URLs for images
+  // Helper to fix Dropbox URLs for images (Handles dl=0 -> raw=1)
   const getOptimizedImage = (url: string) => {
     if (!url) return '';
-    if (url.includes('dropbox.com') && url.includes('dl=0')) {
-      return url.replace('dl=0', 'raw=1');
+    let finalUrl = url;
+    // Fix Dropbox direct link
+    if (finalUrl.includes('dropbox.com') && finalUrl.includes('dl=0')) {
+      finalUrl = finalUrl.replace('dl=0', 'raw=1');
     }
-    return url;
+    return finalUrl;
   };
 
   // 1. Services Grid
@@ -524,6 +526,81 @@ const App: React.FC = () => {
                   )}
               </div>
           </div>
+      </div>
+  );
+
+  // 7. Partners Section (NEW - With Templates)
+  const PartnersSection = (
+      <div key="partners" className="bg-zinc-950 py-16 border-b border-zinc-800 overflow-hidden">
+          <div className="container mx-auto px-6 mb-10 text-center">
+              <h2 className="text-2xl font-black uppercase text-white mb-2">{config.partnersTitle}</h2>
+              <p className="text-zinc-500 text-sm">{config.partnersDesc}</p>
+          </div>
+          
+          {/* TEMPLATE: SCROLL (Default) */}
+          {(!config.partnersTemplate || config.partnersTemplate === 'scroll') && (
+            <div className="relative w-full flex overflow-hidden group">
+                <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-zinc-950 to-transparent z-10"></div>
+                <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-zinc-950 to-transparent z-10"></div>
+                
+                <div className="flex animate-scroll hover:pause whitespace-nowrap gap-12 items-center">
+                    {[...config.partnerItems, ...config.partnerItems, ...config.partnerItems].map((item, index) => (
+                        <div key={`${item.id}-${index}`} className="flex flex-col items-center justify-center flex-shrink-0 grayscale hover:grayscale-0 opacity-60 hover:opacity-100 transition-all duration-300">
+                            {/* SQUARE BOX FORCE - UPDATED FOR PHOTOS: object-cover, no padding */}
+                            <div className="w-32 h-32 bg-white rounded-2xl flex items-center justify-center overflow-hidden border-2 border-zinc-800 hover:border-yellow-400 shadow-lg aspect-square">
+                                <img 
+                                  src={getOptimizedImage(item.logoUrl)} 
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => { (e.target as HTMLImageElement).src = 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/1024px-No_image_available.svg.png'; }}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+          )}
+
+          {/* TEMPLATE: GRID */}
+          {config.partnersTemplate === 'grid' && (
+             <div className="container mx-auto px-6">
+                <div className="flex flex-wrap justify-center gap-8">
+                    {config.partnerItems.map((item, index) => (
+                        <div key={`${item.id}-${index}`} className="flex flex-col items-center justify-center grayscale hover:grayscale-0 transition-all duration-300">
+                            <div className="w-32 h-32 bg-white rounded-2xl flex items-center justify-center overflow-hidden border-2 border-zinc-800 hover:border-yellow-400 shadow-lg aspect-square">
+                                <img 
+                                  src={getOptimizedImage(item.logoUrl)} 
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+             </div>
+          )}
+
+          {/* TEMPLATE: CARDS */}
+          {config.partnersTemplate === 'cards' && (
+             <div className="container mx-auto px-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    {config.partnerItems.map((item, index) => (
+                        <div key={`${item.id}-${index}`} className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl flex flex-col items-center text-center hover:border-yellow-400 transition-all group">
+                            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center overflow-hidden mb-4 aspect-square shadow-inner">
+                                <img 
+                                  src={getOptimizedImage(item.logoUrl)} 
+                                  alt={item.name}
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                                />
+                            </div>
+                            <p className="text-white font-bold text-sm uppercase">{item.name}</p>
+                            <div className="w-8 h-1 bg-zinc-800 group-hover:bg-yellow-400 mt-2 rounded-full transition-colors"></div>
+                        </div>
+                    ))}
+                </div>
+             </div>
+          )}
+
       </div>
   );
 
@@ -822,6 +899,7 @@ const App: React.FC = () => {
     'reservation': ReservationSection,
     'bus': BusSection,
     'contact': ContactSection,
+    'partners': PartnersSection,
   };
 
   if (isLoadingConfig) {

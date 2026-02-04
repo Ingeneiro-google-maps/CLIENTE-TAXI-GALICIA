@@ -30,6 +30,12 @@ export interface FleetItem {
   images: string[]; // Changed from single imageUrl to array
 }
 
+export interface PartnerItem {
+  id: string;
+  name: string;
+  logoUrl: string;
+}
+
 export interface SiteConfig {
   heroTitle: string;
   heroSubtitle: string;
@@ -84,6 +90,12 @@ export interface SiteConfig {
   fleetDesc: string;
   fleetItems: FleetItem[];
   
+  // New: Partners Section
+  partnersTitle: string;
+  partnersDesc: string;
+  partnerItems: PartnerItem[];
+  partnersTemplate: 'scroll' | 'grid' | 'cards'; // Nuevo: Selector de plantilla
+
   // New: Footer Settings
   footerTitle: string;
   footerText: string;
