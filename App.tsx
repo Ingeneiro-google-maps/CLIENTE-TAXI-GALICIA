@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CITIES, ASSISTANCE_OPTIONS, DEFAULT_CONFIG } from './constants';
-import { BookingData, BookingConfirmation, SiteConfig, FleetItem } from './types';
+import { BookingData, BookingConfirmation, SiteConfig, FleetItem, PartnerItem } from './types';
 import GaliciaMap from './components/GaliciaMap';
 import BookingModal from './components/BookingModal';
 import AdminPanel from './components/AdminPanel';
@@ -26,6 +26,9 @@ const App: React.FC = () => {
   // State for Fleet Lightbox (Expanded Image)
   const [selectedFleetItem, setSelectedFleetItem] = useState<FleetItem | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  // State for Partner Lightbox (New)
+  const [selectedPartner, setSelectedPartner] = useState<PartnerItem | null>(null);
 
   // Load Config from Neon Database on Mount
   useEffect(() => {
@@ -529,7 +532,7 @@ const App: React.FC = () => {
       </div>
   );
 
-  // 7. Partners Section (NEW - With Templates)
+  // 7. Partners Section (NEW - With Templates & Click Handler)
   const PartnersSection = (
       <div key="partners" className="bg-zinc-950 py-16 border-b border-zinc-800 overflow-hidden">
           <div className="container mx-auto px-6 mb-10 text-center">
@@ -545,7 +548,11 @@ const App: React.FC = () => {
                 
                 <div className="flex animate-scroll hover:pause whitespace-nowrap gap-12 items-center">
                     {[...config.partnerItems, ...config.partnerItems, ...config.partnerItems].map((item, index) => (
-                        <div key={`${item.id}-${index}`} className="flex flex-col items-center justify-center flex-shrink-0 grayscale hover:grayscale-0 opacity-60 hover:opacity-100 transition-all duration-300">
+                        <div 
+                            key={`${item.id}-${index}`} 
+                            onClick={() => setSelectedPartner(item)}
+                            className="flex flex-col items-center justify-center flex-shrink-0 grayscale hover:grayscale-0 opacity-60 hover:opacity-100 transition-all duration-300 cursor-pointer"
+                        >
                             {/* SQUARE BOX FORCE - UPDATED FOR PHOTOS: object-cover, no padding */}
                             <div className="w-32 h-32 bg-white rounded-2xl flex items-center justify-center overflow-hidden border-2 border-zinc-800 hover:border-yellow-400 shadow-lg aspect-square">
                                 <img 
@@ -566,7 +573,11 @@ const App: React.FC = () => {
              <div className="container mx-auto px-6">
                 <div className="flex flex-wrap justify-center gap-8">
                     {config.partnerItems.map((item, index) => (
-                        <div key={`${item.id}-${index}`} className="flex flex-col items-center justify-center grayscale hover:grayscale-0 transition-all duration-300">
+                        <div 
+                            key={`${item.id}-${index}`} 
+                            onClick={() => setSelectedPartner(item)}
+                            className="flex flex-col items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 cursor-pointer"
+                        >
                             <div className="w-32 h-32 bg-white rounded-2xl flex items-center justify-center overflow-hidden border-2 border-zinc-800 hover:border-yellow-400 shadow-lg aspect-square">
                                 <img 
                                   src={getOptimizedImage(item.logoUrl)} 
@@ -585,7 +596,11 @@ const App: React.FC = () => {
              <div className="container mx-auto px-6">
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
                     {config.partnerItems.map((item, index) => (
-                        <div key={`${item.id}-${index}`} className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl flex flex-col items-center text-center hover:border-yellow-400 transition-all group">
+                        <div 
+                            key={`${item.id}-${index}`} 
+                            onClick={() => setSelectedPartner(item)}
+                            className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl flex flex-col items-center text-center hover:border-yellow-400 transition-all group cursor-pointer"
+                        >
                             <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center overflow-hidden mb-4 aspect-square shadow-inner">
                                 <img 
                                   src={getOptimizedImage(item.logoUrl)} 
@@ -1232,6 +1247,35 @@ const App: React.FC = () => {
                         RESERVAR ESTE VEHÍCULO
                     </button>
                 </div>
+            </div>
+        </div>
+      )}
+
+      {/* --- PARTNER IMAGE LIGHTBOX --- */}
+      {selectedPartner && (
+        <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 animate-fade-in-up">
+            <button 
+                onClick={() => setSelectedPartner(null)}
+                className="absolute top-6 right-6 text-white/50 hover:text-white bg-white/10 p-3 rounded-full transition-all hover:bg-white/20 z-50"
+            >
+                <X size={32} />
+            </button>
+
+            <div className="max-w-5xl w-full h-full flex flex-col items-center justify-center p-4 relative">
+                <div className="relative max-h-[85vh] max-w-full overflow-hidden rounded-lg shadow-2xl border-2 border-zinc-800">
+                    <img 
+                        src={getOptimizedImage(selectedPartner.logoUrl)} 
+                        alt={selectedPartner.name} 
+                        className="max-h-[85vh] w-auto object-contain bg-black"
+                    />
+                </div>
+                {selectedPartner.name && (
+                    <div className="mt-6">
+                        <span className="inline-block px-6 py-2 rounded-full border border-yellow-400 text-yellow-400 text-lg font-bold uppercase bg-black/80 backdrop-blur-md">
+                            {selectedPartner.name}
+                        </span>
+                    </div>
+                )}
             </div>
         </div>
       )}
