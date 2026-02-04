@@ -63,7 +63,7 @@ const GaliciaMap: React.FC<GaliciaMapProps> = ({
   }, [originId, destinationId, isSimulating, isCustomDestination, customAddress, isCustomOrigin, customOriginAddress]);
 
   return (
-    <div className="relative w-full h-[500px] md:h-[700px] bg-zinc-900 rounded-xl overflow-hidden border border-zinc-700 shadow-2xl group">
+    <div className="relative w-full h-[400px] md:h-[700px] bg-zinc-900 rounded-xl overflow-hidden border border-zinc-700 shadow-2xl group">
       {/* Google Maps Iframe */}
       <iframe
         width="100%"

@@ -23,6 +23,9 @@ const App: React.FC = () => {
     height: typeof window !== 'undefined' ? window.innerHeight : 1080 
   });
 
+  // Video Ref for forcing autoplay on mobile
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   // State for Fleet Lightbox (Expanded Image)
   const [selectedFleetItem, setSelectedFleetItem] = useState<FleetItem | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -144,6 +147,24 @@ const App: React.FC = () => {
         }
     }
   }, [isLoadingConfig, config]);
+
+  // Force Video Autoplay on Mobile when URL changes (Standard Video)
+  useEffect(() => {
+    const isYT = activeVideoUrl && (activeVideoUrl.includes('youtube.com') || activeVideoUrl.includes('youtu.be'));
+    
+    if (!isYT && videoRef.current && activeVideoUrl) {
+        // Small timeout to allow render
+        const timer = setTimeout(() => {
+            if (videoRef.current) {
+                videoRef.current.load();
+                videoRef.current.play().catch(error => {
+                    console.log("Autoplay blocked by browser policy (common on mobile):", error);
+                });
+            }
+        }, 100);
+        return () => clearTimeout(timer);
+    }
+  }, [activeVideoUrl]);
 
   // PWA Logic: Detect if installed/mobile and prioritize "Request Taxi"
   useEffect(() => {
@@ -302,7 +323,7 @@ const App: React.FC = () => {
 
   // 1. Services Grid
   const ServicesSection = (
-    <div key="services" className="bg-black py-20 border-b border-zinc-800">
+    <div key="services" className="bg-black py-16 md:py-20 border-b border-zinc-800">
       <div className="container mx-auto px-6">
         <h2 className="text-3xl font-black text-center mb-12 uppercase">Nuestros <span className="text-yellow-400">Servicios</span></h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
@@ -331,9 +352,9 @@ const App: React.FC = () => {
 
   // 2. Transfers (Road Animation)
   const TransfersSection = (
-    <div key="transfers" className="bg-zinc-900 py-32 border-b border-zinc-800 overflow-hidden">
+    <div key="transfers" className="bg-zinc-900 py-16 md:py-32 border-b border-zinc-800 overflow-hidden">
         <div className="container mx-auto px-6 relative">
-          <h2 className="text-3xl md:text-4xl font-black text-center mb-24 uppercase text-white relative z-10">
+          <h2 className="text-3xl md:text-4xl font-black text-center mb-16 md:mb-24 uppercase text-white relative z-10">
             {config.transfersTitle}
           </h2>
           
@@ -433,7 +454,7 @@ const App: React.FC = () => {
 
   // 5. Bus / Groups Section (NEW)
   const BusSection = (
-    <div key="bus" className="bg-zinc-950 py-20 border-b border-zinc-800">
+    <div key="bus" className="bg-zinc-950 py-16 md:py-20 border-b border-zinc-800">
         <div className="container mx-auto px-6">
             <div className="flex flex-col md:flex-row items-center gap-12">
                 <div className="w-full md:w-1/2 space-y-6">
@@ -478,7 +499,7 @@ const App: React.FC = () => {
 
   // 6. Contact Section (NEW)
   const ContactSection = (
-      <div key="contact" className="bg-black py-20 border-b border-zinc-800">
+      <div key="contact" className="bg-black py-16 md:py-20 border-b border-zinc-800">
           <div className="container mx-auto px-6 text-center">
               <h2 className="text-3xl font-black mb-12 uppercase text-white">
                   {config.contactTitle}
@@ -534,7 +555,7 @@ const App: React.FC = () => {
 
   // 7. Partners Section (NEW - With Templates & Click Handler)
   const PartnersSection = (
-      <div key="partners" className="bg-zinc-950 py-16 border-b border-zinc-800 overflow-hidden">
+      <div key="partners" className="bg-zinc-950 py-12 md:py-16 border-b border-zinc-800 overflow-hidden">
           <div className="container mx-auto px-6 mb-10 text-center">
               <h2 className="text-2xl font-black uppercase text-white mb-2">{config.partnersTitle}</h2>
               <p className="text-zinc-500 text-sm">{config.partnersDesc}</p>
@@ -621,7 +642,7 @@ const App: React.FC = () => {
 
   // 3. Fleet Section
   const FleetSection = (
-    <div key="fleet" className="bg-black py-24 border-b border-zinc-800">
+    <div key="fleet" className="bg-black py-16 md:py-24 border-b border-zinc-800">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
                 <h2 className="text-4xl font-black mb-4 uppercase text-white">
@@ -983,7 +1004,8 @@ const App: React.FC = () => {
       {config.enableAssistant && <TrafficAssistant apiKey={config.geminiApiKey} />}
 
       {/* --- HERO SECTION (Always Top) --- */}
-      <div className="relative h-screen w-full flex items-center justify-center overflow-hidden">
+      {/* h-[100dvh] is crucial for mobile browsers to handle URL bar resizing gracefully */}
+      <div className="relative h-[100dvh] w-full flex items-center justify-center overflow-hidden">
         {/* Video Background */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-black/60 z-10"></div>
@@ -991,7 +1013,7 @@ const App: React.FC = () => {
           {isYouTube ? (
              <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none flex items-center justify-center">
                  <iframe 
-                   src={`https://www.youtube.com/embed/${activeVideoUrl.split('v=')[1]?.split('&')[0] || activeVideoUrl.split('/').pop()}?autoplay=1&mute=1&controls=0&loop=1&playlist=${activeVideoUrl.split('v=')[1]?.split('&')[0] || activeVideoUrl.split('/').pop()}&playsinline=1&showinfo=0&rel=0&iv_load_policy=3`}
+                   src={`https://www.youtube.com/embed/${activeVideoUrl.split('v=')[1]?.split('&')[0] || activeVideoUrl.split('/').pop()}?autoplay=1&mute=1&controls=0&loop=1&playlist=${activeVideoUrl.split('v=')[1]?.split('&')[0] || activeVideoUrl.split('/').pop()}&playsinline=1&showinfo=0&rel=0&iv_load_policy=3&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
                    title="Background Video"
                    frameBorder="0"
                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -1009,6 +1031,7 @@ const App: React.FC = () => {
              </div>
           ) : (
             <video 
+              ref={videoRef}
               key={activeVideoUrl} 
               autoPlay 
               loop 
@@ -1026,13 +1049,13 @@ const App: React.FC = () => {
           <div className="inline-block mb-4 px-6 py-2 rounded-full border border-yellow-400 text-yellow-400 text-sm font-bold tracking-widest uppercase bg-black/60 backdrop-blur-md shadow-lg">
             Servicio Oficial Caldas de Reis
           </div>
-          <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter text-white drop-shadow-2xl uppercase">
+          <h1 className="text-4xl md:text-5xl lg:text-7xl font-black mb-6 tracking-tighter text-white drop-shadow-2xl uppercase">
             {config.heroTitle}
           </h1>
-          <p className="text-xl md:text-2xl text-gray-200 mb-10 max-w-3xl mx-auto font-light drop-shadow-md">
+          <p className="text-lg md:text-2xl text-gray-200 mb-10 max-w-3xl mx-auto font-light drop-shadow-md">
             {config.heroSubtitle}
           </p>
-          <a href="#reservation" className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-4 px-10 rounded-full transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(250,204,21,0.5)] flex items-center gap-3 mx-auto w-fit">
+          <a href="#reservation" className="bg-yellow-400 hover:bg-yellow-300 text-black font-bold py-4 px-10 rounded-full transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(250,204,21,0.5)] flex items-center justify-center gap-3 mx-auto w-fit">
             <Car size={24} />
             SOLICITAR TAXI
           </a>
