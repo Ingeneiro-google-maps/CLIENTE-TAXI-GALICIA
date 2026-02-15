@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem, PartnerItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight, MapPin, Handshake, LayoutGrid, Search, Globe, CheckCircle2, FileText, Download, Copy, ExternalLink, RefreshCcw } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight, MapPin, Handshake, LayoutGrid, Search, Globe, CheckCircle2, FileText, Download, Copy, ExternalLink, RefreshCcw, Eye, CloudUpload, Link as LinkIcon } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -39,10 +39,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   const [configSize, setConfigSize] = useState(0);
   const timeoutRef = useRef<any>(null);
   
-  // Sitemap copy/verify state
+  // Sitemap states
   const [copiedLink, setCopiedLink] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle');
   const [liveSitemapContent, setLiveSitemapContent] = useState('');
+  const [isGeneratingSitemap, setIsGeneratingSitemap] = useState(false);
+  
+  // Upload States
+  const [isUploadingSitemap, setIsUploadingSitemap] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   // --- LOGIC HELPERS DEFINED BEFORE EARLY RETURNS ---
 
@@ -131,10 +136,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
 
   // --- SITEMAP GENERATOR LOGIC ---
   const generateSitemap = () => {
-      const domain = formData.domainUrl ? formData.domainUrl.replace(/\/$/, '') : 'https://tudominio.com';
-      const date = new Date().toISOString().split('T')[0];
-      
-      let xml = `<?xml version="1.0" encoding="UTF-8"?>
+      setIsGeneratingSitemap(true);
+
+      // Simulation delay for the "Taxi Animation"
+      setTimeout(() => {
+        const domain = formData.domainUrl ? formData.domainUrl.replace(/\/$/, '') : 'https://tudominio.com';
+        const date = new Date().toISOString().split('T')[0];
+        
+        let xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- PÁGINA PRINCIPAL -->
   <url>
@@ -144,24 +153,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     <priority>1.0</priority>
   </url>`;
 
-      // Mapa de prioridades para cada sección
-      const sectionMeta: Record<string, { priority: string, changefreq: string }> = {
-          'reservation': { priority: '1.0', changefreq: 'weekly' },
-          'fleet': { priority: '0.9', changefreq: 'monthly' },
-          'services': { priority: '0.8', changefreq: 'monthly' },
-          'transfers': { priority: '0.8', changefreq: 'monthly' },
-          'bus': { priority: '0.8', changefreq: 'monthly' },
-          'contact': { priority: '0.7', changefreq: 'yearly' },
-          'partners': { priority: '0.5', changefreq: 'yearly' }
-      };
+        // Mapa de prioridades
+        const sectionMeta: Record<string, { priority: string, changefreq: string }> = {
+            'reservation': { priority: '1.0', changefreq: 'weekly' },
+            'fleet': { priority: '0.9', changefreq: 'monthly' },
+            'services': { priority: '0.8', changefreq: 'monthly' },
+            'transfers': { priority: '0.8', changefreq: 'monthly' },
+            'bus': { priority: '0.8', changefreq: 'monthly' },
+            'contact': { priority: '0.7', changefreq: 'yearly' },
+            'partners': { priority: '0.5', changefreq: 'yearly' }
+        };
 
-      // Generar entradas dinámicas para cada sección activa (Anchor Links)
-      if (formData.sectionOrder && formData.sectionOrder.length > 0) {
-          formData.sectionOrder.forEach(sectionId => {
-              const meta = sectionMeta[sectionId] || { priority: '0.5', changefreq: 'monthly' };
-              const sectionName = SECTION_LABELS[sectionId] || sectionId;
-              
-              xml += `
+        // Generar entradas dinámicas
+        if (formData.sectionOrder && formData.sectionOrder.length > 0) {
+            formData.sectionOrder.forEach(sectionId => {
+                const meta = sectionMeta[sectionId] || { priority: '0.5', changefreq: 'monthly' };
+                const sectionName = SECTION_LABELS[sectionId] || sectionId;
+                
+                xml += `
   <!-- Sección: ${sectionName} -->
   <url>
     <loc>${domain}/#${sectionId}</loc>
@@ -169,12 +178,39 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
     <changefreq>${meta.changefreq}</changefreq>
     <priority>${meta.priority}</priority>
   </url>`;
-          });
+            });
+        }
+
+        xml += `\n</urlset>`;
+
+        setFormData(prev => ({ ...prev, sitemapXml: xml }));
+        setIsGeneratingSitemap(false);
+        setUploadSuccess(false); // Reset upload status on new gen
+      }, 2000); // 2 seconds animation
+  };
+
+  const handleUploadSitemap = async () => {
+      if (!formData.sitemapXml) {
+          alert("Primero debes generar el sitemap.");
+          return;
+      }
+      if (!formData.domainUrl) {
+          alert("Necesitas configurar el Dominio primero (Campo #1).");
+          return;
       }
 
-      xml += `\n</urlset>`;
-
-      setFormData(prev => ({ ...prev, sitemapXml: xml }));
+      setIsUploadingSitemap(true);
+      
+      // Simulate network latency + Save to DB
+      setTimeout(async () => {
+          const success = await onSave(formData);
+          setIsUploadingSitemap(false);
+          if (success) {
+              setUploadSuccess(true);
+          } else {
+              alert("Error al guardar en la base de datos.");
+          }
+      }, 1500);
   };
 
   const downloadSitemap = () => {
@@ -636,7 +672,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
             </div>
 
             {/* NEW: SEO & GOOGLE SECTION */}
-            <div className="space-y-4 border-2 border-green-500/20 p-4 rounded-xl bg-green-950/10">
+            <div className="space-y-4 border-2 border-green-500/20 p-4 rounded-xl bg-green-950/10 relative overflow-hidden">
                <h3 className="text-green-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
                    <Globe size={16} /> SEO y Google Search Console
                </h3>
@@ -705,7 +741,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                </div>
 
                {/* SITEMAP GENERATOR */}
-               <div className="bg-black/50 p-4 rounded-lg border border-zinc-700 space-y-4 mt-2">
+               <div className="bg-black/50 p-4 rounded-lg border border-zinc-700 space-y-4 mt-2 relative overflow-hidden">
+                   
+                   {/* TAXI SIMULADO ANIMATION OVERLAY */}
+                   {isGeneratingSitemap && (
+                     <div className="absolute inset-0 bg-zinc-900/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center overflow-hidden">
+                        <p className="text-yellow-400 font-bold uppercase animate-pulse mb-8 tracking-widest">Generando Sitemap...</p>
+                        
+                        {/* Taxi Driving Animation */}
+                        <div className="w-full relative h-20">
+                           <div className="absolute top-1/2 left-0 w-full h-1 bg-zinc-700 transform -translate-y-1/2"></div>
+                           <div className="absolute top-1/2 left-0 w-full h-1 border-t border-dashed border-white/20 transform -translate-y-1/2"></div>
+                           
+                           <div className="absolute top-1/2 transform -translate-y-1/2 animate-drive" style={{animationDuration: '2s'}}>
+                              {/* Simple SVG Taxi */}
+                              <svg width="60" height="30" viewBox="0 0 60 30" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]">
+                                <path d="M10 15L15 5H45L50 15H60V25H0V15H10Z" fill="#FACC15"/>
+                                <circle cx="12" cy="25" r="4" fill="#333"/>
+                                <circle cx="48" cy="25" r="4" fill="#333"/>
+                                <rect x="25" y="2" width="10" height="3" fill="#FACC15" stroke="black" strokeWidth="0.5"/>
+                                <path d="M18 6H42" stroke="black" strokeWidth="0.5" strokeOpacity="0.5"/>
+                              </svg>
+                           </div>
+                        </div>
+                     </div>
+                   )}
+
                    <div className="flex items-center justify-between border-b border-zinc-700 pb-2">
                        <label className="text-xs font-bold text-white flex items-center gap-2">
                            <FileText size={14} className="text-blue-400" /> Generador de Sitemap.xml
@@ -726,8 +787,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                               className="flex-1 bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-white focus:border-blue-500 outline-none text-xs"
                               placeholder="https://tudominio.com"
                            />
-                           <button type="button" onClick={generateSitemap} className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-2 rounded-lg font-bold transition-colors">
-                               Generar
+                           <button type="button" onClick={generateSitemap} className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 shadow-lg hover:shadow-blue-500/20">
+                               <RefreshCw size={12} className={isGeneratingSitemap ? 'animate-spin' : ''}/> Generar
                            </button>
                        </div>
                    </div>
@@ -742,17 +803,55 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                                   className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-[10px] font-mono text-zinc-400 h-32 resize-none"
                                />
                            </div>
+                           
+                           {/* NEW: DIRECT UPLOAD FEATURE */}
+                           <div className="p-4 bg-zinc-900/80 border border-zinc-700 rounded-xl space-y-4">
+                                <label className="text-xs font-bold text-white flex items-center gap-2">
+                                    <CloudUpload size={16} className="text-yellow-400" /> Publicar en la Nube
+                                </label>
+                                
+                                <div className="flex flex-col gap-3">
+                                    <button 
+                                        type="button" 
+                                        onClick={handleUploadSitemap}
+                                        disabled={isUploadingSitemap}
+                                        className="w-full bg-zinc-800 hover:bg-zinc-700 text-white text-xs py-3 rounded-lg border border-zinc-600 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                                    >
+                                        {isUploadingSitemap ? <Loader2 className="animate-spin" size={14}/> : <CloudUpload size={14}/>}
+                                        {isUploadingSitemap ? 'Subiendo archivo...' : 'SUBIR SITEMAP AL DIRECTORIO (DB)'}
+                                    </button>
+
+                                    {uploadSuccess && (
+                                        <div className="bg-green-900/30 border border-green-500/50 p-3 rounded-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                                            <CheckCircle size={20} className="text-green-400 shrink-0" />
+                                            <div className="overflow-hidden w-full">
+                                                <p className="text-green-400 text-xs font-bold">¡Subida Exitosa!</p>
+                                                <p className="text-green-200/70 text-[10px] truncate mb-1">
+                                                    Tu sitemap debe estar accesible aquí:
+                                                </p>
+                                                <a 
+                                                   href={`${formData.domainUrl?.replace(/\/$/, '')}/sitemap.xml`} 
+                                                   target="_blank" 
+                                                   rel="noreferrer" 
+                                                   className="bg-black/50 block w-full p-2 rounded border border-green-500/30 text-blue-400 text-[10px] font-mono hover:text-blue-300 hover:border-blue-400 transition-colors truncate"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <ExternalLink size={10} /> 
+                                                        {`${formData.domainUrl?.replace(/\/$/, '')}/sitemap.xml`}
+                                                    </div>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                           </div>
 
                            <div className="p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg space-y-3">
                                <div className="flex items-center gap-2 text-blue-300 text-xs font-bold">
-                                   <AlertTriangle size={14} /> Instrucciones Importantes
+                                   <AlertTriangle size={14} /> Opción Manual (Hosting Estático)
                                </div>
                                <p className="text-[10px] text-zinc-300 leading-relaxed">
-                                   Este Sitemap ahora incluye enlaces profundos a cada sección (Flota, Reservas, etc.) para que Google muestre enlaces directos en los resultados de búsqueda.
-                                   <br/><br/>
-                                   <strong>PASO 3:</strong> Descarga el archivo y súbelo a tu hosting (carpeta pública).
-                                   <br/>
-                                   <strong>PASO 4:</strong> Copia el enlace y pégalo en Search Console.
+                                   Si usas un hosting estático simple, es posible que necesites subir el archivo manualmente.
                                </p>
                                
                                <div className="flex gap-2">
@@ -785,7 +884,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                                         onClick={checkLiveSitemap}
                                         className="bg-zinc-800 hover:bg-zinc-700 text-white text-xs px-3 py-2 rounded-lg border border-zinc-600 flex items-center gap-2 w-full justify-center transition-colors"
                                     >
-                                        {verifyStatus === 'checking' ? <Loader2 className="animate-spin" size={14}/> : <RefreshCcw size={14}/>}
+                                        {verifyStatus === 'checking' ? <Loader2 className="animate-spin" size={14}/> : <Eye size={14}/>}
                                         Comprobar URL: {formData.domainUrl ? `${formData.domainUrl.replace(/\/$/, '')}/sitemap.xml` : '...'}
                                     </button>
                                 </div>
