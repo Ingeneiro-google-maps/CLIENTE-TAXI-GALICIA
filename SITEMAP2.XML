@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- PÁGINA PRINCIPAL -->
+  <url>
+    <loc>https://www.taxicaldascheve.es/</loc>
+    <lastmod>2026-02-15</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <!-- Sección: Servicios (Cuadrícula) -->
+  <url>
+    <loc>https://www.taxicaldascheve.es/#services</loc>
+    <lastmod>2026-02-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <!-- Sección: Traslados Animados (Línea de tiempo) -->
+  <url>
+    <loc>https://www.taxicaldascheve.es/#transfers</loc>
+    <lastmod>2026-02-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <!-- Sección: Transporte Autobús / Grupos -->
+  <url>
+    <loc>https://www.taxicaldascheve.es/#bus</loc>
+    <lastmod>2026-02-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <!-- Sección: Flota de Vehículos -->
+  <url>
+    <loc>https://www.taxicaldascheve.es/#fleet</loc>
+    <lastmod>2026-02-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <!-- Sección: Formulario de Reserva y Mapa -->
+  <url>
+    <loc>https://www.taxicaldascheve.es/#reservation</loc>
+    <lastmod>2026-02-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <!-- Sección: Sección de Contacto -->
+  <url>
+    <loc>https://www.taxicaldascheve.es/#contact</loc>
+    <lastmod>2026-02-15</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <!-- Sección: Socios y Colaboradores -->
+  <url>
+    <loc>https://www.taxicaldascheve.es/#partners</loc>
+    <lastmod>2026-02-15</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>
