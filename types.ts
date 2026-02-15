@@ -59,6 +59,10 @@ export interface SiteConfig {
   seoDescription: string;  // <meta name="description">
   seoKeywords: string;     // <meta name="keywords">
   googleVerificationId: string; // <meta name="google-site-verification">
+  
+  // NEW: Sitemap Settings
+  domainUrl: string; // The deployed domain (e.g. https://taxivero.com)
+  sitemapXml: string; // The generated XML content saved in DB
 
   // Order of sections
   sectionOrder: string[]; 

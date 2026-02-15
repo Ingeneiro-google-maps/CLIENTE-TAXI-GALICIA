@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem, PartnerItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight, MapPin, Handshake, LayoutGrid, Search, Globe, CheckCircle2 } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight, MapPin, Handshake, LayoutGrid, Search, Globe, CheckCircle2, FileText, Download, Copy, ExternalLink } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -38,6 +38,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   const [dbMessage, setDbMessage] = useState('');
   const [configSize, setConfigSize] = useState(0);
   const timeoutRef = useRef<any>(null);
+  
+  // Sitemap copy state
+  const [copiedLink, setCopiedLink] = useState(false);
 
   // --- LOGIC HELPERS DEFINED BEFORE EARLY RETURNS ---
 
@@ -122,6 +125,82 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
 
   const clearVideo = (fieldName: keyof SiteConfig) => {
       setFormData(prev => ({ ...prev, [fieldName]: '' }));
+  };
+
+  // --- SITEMAP GENERATOR LOGIC ---
+  const generateSitemap = () => {
+      const domain = formData.domainUrl ? formData.domainUrl.replace(/\/$/, '') : 'https://tudominio.com';
+      const date = new Date().toISOString().split('T')[0];
+      
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- PÁGINA PRINCIPAL -->
+  <url>
+    <loc>${domain}/</loc>
+    <lastmod>${date}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>`;
+
+      // Mapa de prioridades para cada sección
+      const sectionMeta: Record<string, { priority: string, changefreq: string }> = {
+          'reservation': { priority: '1.0', changefreq: 'weekly' },
+          'fleet': { priority: '0.9', changefreq: 'monthly' },
+          'services': { priority: '0.8', changefreq: 'monthly' },
+          'transfers': { priority: '0.8', changefreq: 'monthly' },
+          'bus': { priority: '0.8', changefreq: 'monthly' },
+          'contact': { priority: '0.7', changefreq: 'yearly' },
+          'partners': { priority: '0.5', changefreq: 'yearly' }
+      };
+
+      // Generar entradas dinámicas para cada sección activa (Anchor Links)
+      // Esto ayuda a Google a entender la estructura de la One-Page y generar "Sitelinks"
+      if (formData.sectionOrder && formData.sectionOrder.length > 0) {
+          formData.sectionOrder.forEach(sectionId => {
+              const meta = sectionMeta[sectionId] || { priority: '0.5', changefreq: 'monthly' };
+              const sectionName = SECTION_LABELS[sectionId] || sectionId;
+              
+              xml += `
+  <!-- Sección: ${sectionName} -->
+  <url>
+    <loc>${domain}/#${sectionId}</loc>
+    <lastmod>${date}</lastmod>
+    <changefreq>${meta.changefreq}</changefreq>
+    <priority>${meta.priority}</priority>
+  </url>`;
+          });
+      }
+
+      xml += `\n</urlset>`;
+
+      setFormData(prev => ({ ...prev, sitemapXml: xml }));
+  };
+
+  const downloadSitemap = () => {
+      if (!formData.sitemapXml) {
+          alert("Primero debes generar el sitemap.");
+          return;
+      }
+      const element = document.createElement("a");
+      const file = new Blob([formData.sitemapXml], {type: 'text/xml'});
+      element.href = URL.createObjectURL(file);
+      element.download = "sitemap.xml";
+      document.body.appendChild(element); // Required for this to work in FireFox
+      element.click();
+      document.body.removeChild(element);
+  };
+
+  const copySitemapLink = () => {
+      const domain = formData.domainUrl ? formData.domainUrl.replace(/\/$/, '') : '';
+      if (!domain) {
+          alert("Introduce primero tu dominio.");
+          return;
+      }
+      const link = `${domain}/sitemap.xml`;
+      navigator.clipboard.writeText(link).then(() => {
+          setCopiedLink(true);
+          setTimeout(() => setCopiedLink(false), 2000);
+      });
   };
 
   // Fleet Management
@@ -594,6 +673,79 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                           placeholder="Ej: taxi, caldas, camino santiago, aeropuerto"
                        />
                    </div>
+               </div>
+
+               {/* SITEMAP GENERATOR */}
+               <div className="bg-black/50 p-4 rounded-lg border border-zinc-700 space-y-4 mt-2">
+                   <div className="flex items-center justify-between border-b border-zinc-700 pb-2">
+                       <label className="text-xs font-bold text-white flex items-center gap-2">
+                           <FileText size={14} className="text-blue-400" /> Generador de Sitemap.xml
+                       </label>
+                       <div className="flex items-center gap-2">
+                           <span className="text-[10px] text-zinc-500">Esencial para Google</span>
+                       </div>
+                   </div>
+
+                   <div className="space-y-2">
+                       <label className="text-xs font-bold text-zinc-400">1. Tu Dominio Real (URL completa)</label>
+                       <div className="flex gap-2">
+                           <input 
+                              type="text" 
+                              name="domainUrl" 
+                              value={formData.domainUrl || ''} 
+                              onChange={handleChange} 
+                              className="flex-1 bg-zinc-900 border border-zinc-600 rounded-lg p-2 text-white focus:border-blue-500 outline-none text-xs"
+                              placeholder="https://tudominio.com"
+                           />
+                           <button type="button" onClick={generateSitemap} className="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-2 rounded-lg font-bold transition-colors">
+                               Generar
+                           </button>
+                       </div>
+                   </div>
+
+                   {formData.sitemapXml && (
+                       <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+                           <div className="space-y-1">
+                               <label className="text-xs font-bold text-zinc-400">2. Vista Previa (Todas las secciones)</label>
+                               <textarea 
+                                  readOnly 
+                                  value={formData.sitemapXml} 
+                                  className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-[10px] font-mono text-zinc-400 h-32 resize-none"
+                               />
+                           </div>
+
+                           <div className="p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg space-y-3">
+                               <div className="flex items-center gap-2 text-blue-300 text-xs font-bold">
+                                   <AlertTriangle size={14} /> Instrucciones Importantes
+                               </div>
+                               <p className="text-[10px] text-zinc-300 leading-relaxed">
+                                   Este Sitemap ahora incluye enlaces profundos a cada sección (Flota, Reservas, etc.) para que Google muestre enlaces directos en los resultados de búsqueda.
+                                   <br/><br/>
+                                   <strong>PASO 3:</strong> Descarga el archivo y súbelo a tu hosting (carpeta pública).
+                                   <br/>
+                                   <strong>PASO 4:</strong> Copia el enlace y pégalo en Search Console.
+                               </p>
+                               
+                               <div className="flex gap-2">
+                                   <button type="button" onClick={downloadSitemap} className="flex-1 bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-white text-xs py-2 rounded flex items-center justify-center gap-2 transition-colors">
+                                       <Download size={14} /> Descargar Archivo
+                                   </button>
+                                   <button type="button" onClick={copySitemapLink} className="flex-1 bg-green-900/30 hover:bg-green-900/50 border border-green-700/50 text-green-400 text-xs py-2 rounded flex items-center justify-center gap-2 transition-colors">
+                                       {copiedLink ? <CheckCircle size={14} /> : <Copy size={14} />} 
+                                       {copiedLink ? '¡Enlace Copiado!' : 'Copiar Enlace'}
+                                   </button>
+                               </div>
+                               
+                               {formData.domainUrl && (
+                                   <div className="text-center">
+                                       <a href="https://search.google.com/search-console/sitemaps" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:underline inline-flex items-center gap-1">
+                                           Ir a Validar en Google <ExternalLink size={10} />
+                                       </a>
+                                   </div>
+                               )}
+                           </div>
+                       </div>
+                   )}
                </div>
             </div>
 
