@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem, PartnerItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight, MapPin, Handshake, LayoutGrid, Search, Globe, CheckCircle2, FileText, Download, Copy, ExternalLink } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight, MapPin, Handshake, LayoutGrid, Search, Globe, CheckCircle2, FileText, Download, Copy, ExternalLink, RefreshCcw } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -39,8 +39,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
   const [configSize, setConfigSize] = useState(0);
   const timeoutRef = useRef<any>(null);
   
-  // Sitemap copy state
+  // Sitemap copy/verify state
   const [copiedLink, setCopiedLink] = useState(false);
+  const [verifyStatus, setVerifyStatus] = useState<'idle' | 'checking' | 'success' | 'error'>('idle');
+  const [liveSitemapContent, setLiveSitemapContent] = useState('');
 
   // --- LOGIC HELPERS DEFINED BEFORE EARLY RETURNS ---
 
@@ -154,7 +156,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
       };
 
       // Generar entradas dinámicas para cada sección activa (Anchor Links)
-      // Esto ayuda a Google a entender la estructura de la One-Page y generar "Sitelinks"
       if (formData.sectionOrder && formData.sectionOrder.length > 0) {
           formData.sectionOrder.forEach(sectionId => {
               const meta = sectionMeta[sectionId] || { priority: '0.5', changefreq: 'monthly' };
@@ -201,6 +202,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
           setCopiedLink(true);
           setTimeout(() => setCopiedLink(false), 2000);
       });
+  };
+
+  const checkLiveSitemap = async () => {
+    const domain = formData.domainUrl ? formData.domainUrl.replace(/\/$/, '') : '';
+    if (!domain) {
+        alert("Introduce tu dominio primero.");
+        return;
+    }
+    
+    const url = `${domain}/sitemap.xml`;
+    setVerifyStatus('checking');
+    setLiveSitemapContent('');
+
+    try {
+        // Add timestamp to prevent caching
+        const response = await fetch(`${url}?t=${Date.now()}`, { cache: 'no-store' });
+        if (response.ok) {
+            const text = await response.text();
+            setLiveSitemapContent(text);
+            setVerifyStatus('success');
+        } else {
+            setLiveSitemapContent(`Error ${response.status}: ${response.statusText}`);
+            setVerifyStatus('error');
+        }
+    } catch (error: any) {
+        setLiveSitemapContent(`Error de conexión (Posiblemente CORS o URL incorrecta): ${error.message}`);
+        setVerifyStatus('error');
+    }
   };
 
   // Fleet Management
@@ -743,6 +772,47 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                                        </a>
                                    </div>
                                )}
+                           </div>
+
+                           {/* LIVE VERIFICATION TOOL */}
+                           <div className="pt-4 border-t border-zinc-700">
+                                <label className="text-xs font-bold text-yellow-500 mb-2 block flex items-center gap-2">
+                                    <Search size={14} /> Verificación en Vivo
+                                </label>
+                                <div className="flex gap-2 mb-2">
+                                    <button 
+                                        type="button" 
+                                        onClick={checkLiveSitemap}
+                                        className="bg-zinc-800 hover:bg-zinc-700 text-white text-xs px-3 py-2 rounded-lg border border-zinc-600 flex items-center gap-2 w-full justify-center transition-colors"
+                                    >
+                                        {verifyStatus === 'checking' ? <Loader2 className="animate-spin" size={14}/> : <RefreshCcw size={14}/>}
+                                        Comprobar URL: {formData.domainUrl ? `${formData.domainUrl.replace(/\/$/, '')}/sitemap.xml` : '...'}
+                                    </button>
+                                </div>
+                                
+                                {verifyStatus !== 'idle' && (
+                                    <div className={`p-3 rounded-lg border text-xs font-mono whitespace-pre-wrap max-h-40 overflow-y-auto animate-in fade-in ${verifyStatus === 'success' ? 'bg-green-900/20 border-green-500/50 text-green-300' : 'bg-red-900/20 border-red-500/50 text-red-300'}`}>
+                                        {verifyStatus === 'success' ? (
+                                            <>
+                                                <div className="flex items-center gap-2 font-bold mb-2"><CheckCircle2 size={14}/> ¡Archivo encontrado correctamente!</div>
+                                                <div className="opacity-70 text-[10px]">{liveSitemapContent.substring(0, 300)}...</div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="flex items-center gap-2 font-bold mb-2"><AlertTriangle size={14}/> Error al leer el archivo</div>
+                                                {liveSitemapContent}
+                                                <div className="mt-2 text-zinc-400 font-sans border-t border-red-500/30 pt-2">
+                                                    <strong>Posibles causas:</strong>
+                                                    <ul className="list-disc pl-4 mt-1 space-y-1">
+                                                        <li>No has subido el archivo al hosting.</li>
+                                                        <li>El dominio está mal escrito.</li>
+                                                        <li>Bloqueo de seguridad (CORS). <a href={`${formData.domainUrl?.replace(/\/$/, '')}/sitemap.xml`} target="_blank" rel="noreferrer" className="underline text-blue-400 hover:text-blue-300">Intenta abrirlo manualmente aquí</a>.</li>
+                                                    </ul>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
                            </div>
                        </div>
                    )}
