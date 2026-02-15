@@ -1,4 +1,5 @@
 
+
 import { City, SiteConfig } from './types';
 
 export const CITIES: City[] = [
@@ -64,6 +65,9 @@ export const DEFAULT_CONFIG: SiteConfig = {
   // Sitemap
   domainUrl: "",
   sitemapXml: "",
+  
+  // Root Files
+  rootFiles: [],
 
   // Default order: Services -> Transfers -> Bus -> Fleet -> Reservation -> Contact -> Partners
   sectionOrder: ['services', 'transfers', 'bus', 'fleet', 'reservation', 'contact', 'partners'],

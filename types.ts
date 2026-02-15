@@ -37,6 +37,15 @@ export interface PartnerItem {
   logoUrl: string;
 }
 
+export interface RootFile {
+  id: string;
+  name: string; // e.g. "robots.txt", "google123.html"
+  content: string; // Base64 content
+  size: number; // Bytes
+  type: string; // Mime type
+  lastModified: number;
+}
+
 export interface SiteConfig {
   heroTitle: string;
   heroSubtitle: string;
@@ -63,6 +72,9 @@ export interface SiteConfig {
   // NEW: Sitemap Settings
   domainUrl: string; // The deployed domain (e.g. https://taxivero.com)
   sitemapXml: string; // The generated XML content saved in DB
+
+  // NEW: Root Files Manager (robots.txt, ads.txt, etc.)
+  rootFiles: RootFile[];
 
   // Order of sections
   sectionOrder: string[]; 

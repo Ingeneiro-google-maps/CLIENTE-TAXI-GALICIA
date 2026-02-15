@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SiteConfig, FleetItem, PartnerItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight, MapPin, Handshake, LayoutGrid, Search, Globe, CheckCircle2, FileText, Download, Copy, ExternalLink, RefreshCcw, Eye, CloudUpload, Link as LinkIcon } from 'lucide-react';
+import { SiteConfig, FleetItem, PartnerItem, RootFile } from '../types';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight, MapPin, Handshake, LayoutGrid, Search, Globe, CheckCircle2, FileText, Download, Copy, ExternalLink, RefreshCcw, Eye, CloudUpload, Link as LinkIcon, FolderOpen, FileCode } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -132,6 +132,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
 
   const clearVideo = (fieldName: keyof SiteConfig) => {
       setFormData(prev => ({ ...prev, [fieldName]: '' }));
+  };
+
+  // --- ROOT FILE MANAGER LOGIC ---
+  const handleRootFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      
+      // Limit size: 1MB for root files to play safe
+      if (file.size > 1024 * 1024) {
+          alert("El archivo es demasiado grande. Máximo 1MB para archivos raíz.");
+          return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          const content = event.target?.result as string;
+          const newFile: RootFile = {
+              id: Date.now().toString(),
+              name: file.name,
+              content: content,
+              size: file.size,
+              type: file.type,
+              lastModified: file.lastModified
+          };
+          
+          setFormData(prev => ({
+              ...prev,
+              rootFiles: [...(prev.rootFiles || []), newFile]
+          }));
+      };
+      reader.readAsDataURL(file);
+      // Clear input
+      e.target.value = '';
+  };
+
+  const removeRootFile = (index: number) => {
+      if(!confirm("¿Borrar este archivo de la configuración?")) return;
+      const newFiles = [...(formData.rootFiles || [])];
+      newFiles.splice(index, 1);
+      setFormData(prev => ({ ...prev, rootFiles: newFiles }));
   };
 
   // --- SITEMAP GENERATOR LOGIC ---
@@ -498,6 +538,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
         if (!configWithImages.partnerItems) {
             configWithImages.partnerItems = [];
         }
+
+        // Ensure root files exist
+        if (!configWithImages.rootFiles) {
+            configWithImages.rootFiles = [];
+        }
         
         setFormData(configWithImages);
         
@@ -738,6 +783,74 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                           placeholder="Ej: taxi, caldas, camino santiago, aeropuerto"
                        />
                    </div>
+               </div>
+
+               {/* ROOT FILES MANAGER (NEW SECTION) */}
+               <div className="bg-black/50 p-4 rounded-lg border border-zinc-700 space-y-4 relative overflow-hidden">
+                   <div className="flex items-center justify-between border-b border-zinc-700 pb-2">
+                       <label className="text-xs font-bold text-white flex items-center gap-2">
+                           <FolderOpen size={14} className="text-purple-400" /> Gestor de Archivos Raíz (Public)
+                       </label>
+                       <div className="flex items-center gap-2">
+                           <span className="text-[10px] text-zinc-500">robots.txt, ads.txt, html...</span>
+                       </div>
+                   </div>
+
+                   <p className="text-[10px] text-zinc-400">
+                       Sube archivos que necesiten estar en la raíz de tu dominio (ej: validación de Google). Se guardarán en la base de datos.
+                   </p>
+
+                   {/* File Input */}
+                   <div className="relative border-2 border-dashed border-zinc-700 hover:border-purple-500 rounded-lg p-4 transition-colors group text-center cursor-pointer bg-zinc-900/30">
+                       <input 
+                           type="file" 
+                           onChange={handleRootFileUpload} 
+                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                           title="Subir archivo"
+                       />
+                       <div className="flex flex-col items-center gap-2 pointer-events-none">
+                           <CloudUpload size={24} className="text-zinc-500 group-hover:text-purple-400 transition-colors" />
+                           <span className="text-xs font-bold text-zinc-400 group-hover:text-white">Click para subir archivo (Max 1MB)</span>
+                       </div>
+                   </div>
+
+                   {/* File List */}
+                   {formData.rootFiles && formData.rootFiles.length > 0 && (
+                       <div className="space-y-2 mt-2">
+                           {formData.rootFiles.map((file, index) => (
+                               <div key={file.id || index} className="flex items-center justify-between bg-zinc-900 p-2 rounded border border-zinc-800 hover:border-purple-500/30 transition-colors">
+                                   <div className="flex items-center gap-3 overflow-hidden">
+                                       <FileCode size={16} className="text-purple-400 shrink-0" />
+                                       <div className="overflow-hidden">
+                                           <p className="text-xs text-white font-bold truncate">{file.name}</p>
+                                           <p className="text-[10px] text-zinc-500">{(file.size / 1024).toFixed(1)} KB • {new Date(file.lastModified || Date.now()).toLocaleDateString()}</p>
+                                       </div>
+                                   </div>
+                                   
+                                   <div className="flex items-center gap-2 shrink-0">
+                                       {formData.domainUrl && (
+                                            <a 
+                                                href={`${formData.domainUrl?.replace(/\/$/, '')}/${file.name}`} 
+                                                target="_blank" 
+                                                rel="noreferrer"
+                                                className="p-1.5 hover:bg-zinc-800 rounded text-blue-400"
+                                                title="Ver enlace simulado"
+                                            >
+                                                <ExternalLink size={14} />
+                                            </a>
+                                       )}
+                                       <button 
+                                           onClick={() => removeRootFile(index)} 
+                                           className="p-1.5 hover:bg-red-900/30 rounded text-red-500"
+                                           title="Borrar archivo"
+                                       >
+                                           <Trash2 size={14} />
+                                       </button>
+                                   </div>
+                               </div>
+                           ))}
+                       </div>
+                   )}
                </div>
 
                {/* SITEMAP GENERATOR */}
