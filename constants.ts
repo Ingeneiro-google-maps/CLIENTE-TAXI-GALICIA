@@ -1,3 +1,4 @@
+
 import { City, SiteConfig } from './types';
 
 export const CITIES: City[] = [
@@ -53,6 +54,12 @@ export const DEFAULT_CONFIG: SiteConfig = {
   enableAssistant: true,
   geminiApiKey: "", // User must provide this in Admin Panel to fix Domain Errors
   demoMode: false, // Watermark disabled by default
+
+  // SEO Defaults
+  seoTitle: "Taxi Galicia | Reserva Profesional",
+  seoDescription: "Taxi oficial en Caldas de Reis y Galicia. Servicio 24 horas, traslados Camino de Santiago, aeropuertos (SCQ, VGO) y eventos. Reserva online.",
+  seoKeywords: "taxi caldas de reis, taxi camino santiago, transporte mochilas, taxi aeropuerto santiago, taxi vigo",
+  googleVerificationId: "",
 
   // Default order: Services -> Transfers -> Bus -> Fleet -> Reservation -> Contact -> Partners
   sectionOrder: ['services', 'transfers', 'bus', 'fleet', 'reservation', 'contact', 'partners'],

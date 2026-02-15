@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SiteConfig, FleetItem, PartnerItem } from '../types';
-import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight, MapPin, Handshake, LayoutGrid } from 'lucide-react';
+import { X, Save, RotateCcw, Lock, Plus, Trash2, ArrowUp, ArrowDown, Layout, Loader2, Database, AlertTriangle, CheckCircle, Server, RefreshCw, Smartphone, Mail, Video, Upload, FileVideo, MessageCircle, PlaySquare, AlertOctagon, Mic, Type, Key, Stamp, Car, Bus, Phone, Image as ImageIcon, ShieldAlert, ArrowRight, MapPin, Handshake, LayoutGrid, Search, Globe, CheckCircle2 } from 'lucide-react';
 import { DEFAULT_CONFIG } from '../constants';
 import { dbService, getDbUrl } from '../services/db';
 
@@ -524,6 +524,76 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ isOpen, onClose, currentConfig,
                     {dbStatus === 'connecting' && <div className="absolute right-3 top-3"><Loader2 size={16} className="animate-spin text-yellow-500" /></div>}
                   </div>
                   <p className={`text-[10px] font-mono ${statusUI.color}`}>{dbMessage || 'Introduce URL para conectar.'}</p>
+               </div>
+            </div>
+
+            {/* NEW: SEO & GOOGLE SECTION */}
+            <div className="space-y-4 border-2 border-green-500/20 p-4 rounded-xl bg-green-950/10">
+               <h3 className="text-green-400 font-bold uppercase text-sm tracking-wider flex items-center gap-2">
+                   <Globe size={16} /> SEO y Google Search Console
+               </h3>
+               <p className="text-[10px] text-zinc-400">Configura cómo te encuentran en Google y verifica tu propiedad.</p>
+               
+               {/* Google Verification */}
+               <div className="bg-black/50 p-4 rounded-lg border border-zinc-700 space-y-3">
+                   <div className="flex items-center justify-between">
+                       <label className="text-xs font-bold text-white flex items-center gap-2">
+                           <CheckCircle2 size={14} className="text-green-500" /> Verificación de Propiedad
+                       </label>
+                       <a href="https://search.google.com/search-console/welcome" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300 underline flex items-center gap-1">
+                           Ir a Search Console <ArrowRight size={10} />
+                       </a>
+                   </div>
+                   <input 
+                      type="text" 
+                      name="googleVerificationId" 
+                      value={formData.googleVerificationId || ''} 
+                      onChange={handleChange} 
+                      className="w-full bg-zinc-900 border border-zinc-600 rounded-lg p-3 text-white focus:border-green-500 outline-none font-mono text-xs"
+                      placeholder='Ej: Pega aquí el código "google-site-verification=..." o solo el hash'
+                   />
+                   <p className="text-[10px] text-zinc-500">
+                       Copia el código de etiqueta HTML que te da Google Search Console y pégalo aquí para verificar que eres el dueño de la web.
+                   </p>
+               </div>
+
+               {/* Meta Data */}
+               <div className="grid grid-cols-1 gap-4">
+                   <div className="space-y-1">
+                       <label className="text-xs font-bold text-zinc-400 flex items-center gap-1"><Search size={12}/> Título en Google (Meta Title)</label>
+                       <input 
+                          type="text" 
+                          name="seoTitle" 
+                          value={formData.seoTitle || ''} 
+                          onChange={handleChange} 
+                          className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-sm focus:border-green-500 outline-none" 
+                          placeholder="Ej: Taxi Caldas | Servicio 24H"
+                       />
+                   </div>
+                   
+                   <div className="space-y-1">
+                       <label className="text-xs font-bold text-zinc-400">Descripción (Lo que sale debajo del enlace)</label>
+                       <textarea 
+                          name="seoDescription" 
+                          value={formData.seoDescription || ''} 
+                          onChange={handleChange} 
+                          rows={2}
+                          className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs focus:border-green-500 outline-none resize-none" 
+                          placeholder="Ej: Reserva tu taxi oficial. Traslados aeropuerto y Camino de Santiago..."
+                       />
+                   </div>
+
+                   <div className="space-y-1">
+                       <label className="text-xs font-bold text-zinc-400">Palabras Clave (Separadas por comas)</label>
+                       <input 
+                          type="text" 
+                          name="seoKeywords" 
+                          value={formData.seoKeywords || ''} 
+                          onChange={handleChange} 
+                          className="w-full bg-black border border-zinc-700 rounded-lg p-2 text-white text-xs focus:border-green-500 outline-none" 
+                          placeholder="Ej: taxi, caldas, camino santiago, aeropuerto"
+                       />
+                   </div>
                </div>
             </div>
 

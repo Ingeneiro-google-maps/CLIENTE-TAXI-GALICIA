@@ -1,3 +1,4 @@
+
 export interface City {
   id: string;
   name: string;
@@ -52,6 +53,12 @@ export interface SiteConfig {
   enableAssistant: boolean; // Toggle for AI Assistant
   geminiApiKey: string; // Custom API Key to fix Domain Errors (1008)
   demoMode: boolean; // Toggle for Demo Watermark
+
+  // NEW: SEO & Google Settings
+  seoTitle: string;        // <title>
+  seoDescription: string;  // <meta name="description">
+  seoKeywords: string;     // <meta name="keywords">
+  googleVerificationId: string; // <meta name="google-site-verification">
 
   // Order of sections
   sectionOrder: string[]; 

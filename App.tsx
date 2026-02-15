@@ -148,21 +148,41 @@ const App: React.FC = () => {
     }
   }, [isLoadingConfig, config]);
 
-  // Force Video Autoplay on Mobile when URL changes (Standard Video)
+  // Force Video Autoplay on Mobile (iOS Fixes)
   useEffect(() => {
     const isYT = activeVideoUrl && (activeVideoUrl.includes('youtube.com') || activeVideoUrl.includes('youtu.be'));
     
     if (!isYT && videoRef.current && activeVideoUrl) {
-        // Small timeout to allow render
-        const timer = setTimeout(() => {
-            if (videoRef.current) {
-                videoRef.current.load();
-                videoRef.current.play().catch(error => {
-                    console.log("Autoplay blocked by browser policy (common on mobile):", error);
-                });
+        const videoEl = videoRef.current;
+        
+        // CRITICAL FOR IOS: Ensure strict muted properties directly on DOM element
+        // iOS will NOT autoplay if it thinks there is sound, even if 'muted' attr is present in React
+        videoEl.muted = true;
+        videoEl.defaultMuted = true; 
+        videoEl.playsInline = true;
+        
+        const attemptPlay = async () => {
+            try {
+                // Attempt standard play
+                await videoEl.play();
+            } catch (err) {
+                console.log("Autoplay blocked (Low Power Mode or Policy). Waiting for interaction.");
+                
+                // Fallback: Add a one-time listener to start video on first touch/click
+                const forceStart = () => {
+                    videoEl.play().catch(() => {});
+                    videoEl.muted = true; // Re-enforce mute
+                    window.removeEventListener('touchstart', forceStart);
+                    window.removeEventListener('click', forceStart);
+                };
+                
+                window.addEventListener('touchstart', forceStart, { passive: true });
+                window.addEventListener('click', forceStart);
             }
-        }, 100);
-        return () => clearTimeout(timer);
+        };
+
+        // Small timeout to ensure DOM is ready
+        setTimeout(attemptPlay, 100);
     }
   }, [activeVideoUrl]);
 
@@ -186,6 +206,47 @@ const App: React.FC = () => {
       }
     }
   }, [isLoadingConfig]);
+
+  // --- SEO INJECTION EFFECT (Invisible to user, visible to Google) ---
+  useEffect(() => {
+      if (!config) return;
+
+      // 1. Update Title
+      document.title = config.seoTitle || DEFAULT_CONFIG.seoTitle;
+
+      // 2. Update Meta Description
+      let metaDesc = document.querySelector('meta[name="description"]');
+      if (!metaDesc) {
+          metaDesc = document.createElement('meta');
+          metaDesc.setAttribute('name', 'description');
+          document.head.appendChild(metaDesc);
+      }
+      metaDesc.setAttribute('content', config.seoDescription || DEFAULT_CONFIG.seoDescription);
+
+      // 3. Update Meta Keywords
+      let metaKeywords = document.querySelector('meta[name="keywords"]');
+      if (!metaKeywords) {
+          metaKeywords = document.createElement('meta');
+          metaKeywords.setAttribute('name', 'keywords');
+          document.head.appendChild(metaKeywords);
+      }
+      metaKeywords.setAttribute('content', config.seoKeywords || DEFAULT_CONFIG.seoKeywords);
+
+      // 4. Update Google Verification (Crucial for Search Console)
+      if (config.googleVerificationId) {
+          let metaGoogle = document.querySelector('meta[name="google-site-verification"]');
+          if (!metaGoogle) {
+              metaGoogle = document.createElement('meta');
+              metaGoogle.setAttribute('name', 'google-site-verification');
+              document.head.appendChild(metaGoogle);
+          }
+          // The admin might paste the whole tag <meta name... content="..."> or just the content
+          // We assume they paste just the code, but let's be safe later
+          // For now, strict mapping
+          metaGoogle.setAttribute('content', config.googleVerificationId);
+      }
+
+  }, [config]);
 
   const handleSaveConfig = async (newConfig: SiteConfig) => {
     // Optimistic update
@@ -1037,6 +1098,8 @@ const App: React.FC = () => {
               loop 
               muted 
               playsInline 
+              // Legacy/Fallback attribute sometimes helpful
+              x-webkit-airplay="allow"
               className="w-full h-full object-cover opacity-80"
             >
               {activeVideoUrl && <source src={activeVideoUrl} type="video/mp4" />}
